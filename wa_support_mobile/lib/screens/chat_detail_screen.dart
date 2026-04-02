@@ -69,6 +69,35 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     return _agents;
   }
 
+  /// Ensures [DropdownButton] always has exactly one item matching [Conversation.assignedTo]
+  /// (avoids crash when assignee is not in the filtered list, e.g. role mismatch).
+  List<AgentSummary> _dropdownAgentRows() {
+    final byId = <int, AgentSummary>{};
+    for (final a in _assignableAgents) {
+      byId[a.id] = a;
+    }
+    final aid = _conv.assignedTo;
+    if (aid != null && !byId.containsKey(aid)) {
+      byId[aid] = AgentSummary(
+        id: aid,
+        name: 'Assigned user #$aid',
+        email: null,
+        role: 'admin',
+      );
+    }
+    final list = byId.values.toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return list;
+  }
+
+  int? get _assignDropdownValue {
+    final id = _conv.assignedTo;
+    if (id == null) {
+      return null;
+    }
+    return _dropdownAgentRows().any((a) => a.id == id) ? id : null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -92,7 +121,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     });
     try {
       if (_admin) {
-        _agents = await _chat.fetchAgents();
+        final raw = await _chat.fetchAgents();
+        final seen = <int>{};
+        _agents = [
+          for (final a in raw)
+            if (seen.add(a.id)) a,
+        ];
       }
       await _chat.markRead(_conv.id);
       final msgs = await _chat.fetchMessages(_conv.id);
@@ -410,6 +444,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final title = hasName ? _conv.customerName! : _e164Phone;
     final df = DateFormat.Hm();
 
+    final assignRows = _dropdownAgentRows();
+
     return Scaffold(
       backgroundColor: AppColors.pageBg,
       resizeToAvoidBottomInset: true,
@@ -514,34 +550,64 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             Container(
               width: double.infinity,
               margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: AppColors.brandBlack.withValues(alpha: 0.08)),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.green.withValues(alpha: 0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
-                  const Text('Assign:', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Icon(Icons.person_search_rounded, size: 22, color: AppColors.green),
                   const SizedBox(width: 8),
+                  const Text(
+                    'Assign',
+                    style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.brandBlack),
+                  ),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: DropdownButtonFormField<int?>(
-                      key: ValueKey<int?>(_conv.assignedTo),
-                      initialValue: _conv.assignedTo,
-                      decoration: const InputDecoration(
+                      key: ValueKey<String>(
+                        '${_conv.id}_${_conv.assignedTo}_${_agents.length}',
+                      ),
+                      initialValue: _assignDropdownValue,
+                      decoration: InputDecoration(
                         isDense: true,
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAF8),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.green.withValues(alpha: 0.35)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.green.withValues(alpha: 0.35)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: AppColors.green, width: 1.5),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       ),
                       items: [
                         const DropdownMenuItem<int?>(
                           value: null,
                           child: Text('Unassigned'),
                         ),
-                        ..._assignableAgents.map(
+                        ...assignRows.map(
                           (a) => DropdownMenuItem<int?>(
                             value: a.id,
-                            child: Text(a.role == 'admin' ? '${a.name} (Admin)' : a.name),
+                            child: Text(
+                              a.role == 'admin' ? '${a.name} (Admin)' : a.name,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
                       ],

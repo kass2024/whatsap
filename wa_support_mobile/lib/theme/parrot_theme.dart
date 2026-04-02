@@ -17,6 +17,29 @@ ThemeData buildParrotTheme() {
     useMaterial3: true,
     colorScheme: colorScheme,
     scaffoldBackgroundColor: AppColors.pageBg,
+    navigationBarTheme: NavigationBarThemeData(
+      indicatorColor: AppColors.green.withValues(alpha: 0.18),
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+            color: AppColors.green,
+          );
+        }
+        return const TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 12,
+          color: AppColors.muted,
+        );
+      }),
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const IconThemeData(color: AppColors.green, size: 24);
+        }
+        return const IconThemeData(color: AppColors.muted, size: 24);
+      }),
+    ),
     appBarTheme: const AppBarTheme(
       elevation: 0,
       scrolledUnderElevation: 0,

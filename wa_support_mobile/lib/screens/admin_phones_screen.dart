@@ -114,8 +114,8 @@ class _AdminPhonesScreenState extends State<AdminPhonesScreen> {
               controller: phoneCtrl,
               keyboardType: TextInputType.phone,
               decoration: const InputDecoration(
-                labelText: 'Phone (digits / E.164)',
-                hintText: '447911123456',
+                labelText: 'Phone',
+                hintText: 'Digits only',
               ),
             ),
             const SizedBox(height: 12),
@@ -123,7 +123,6 @@ class _AdminPhonesScreenState extends State<AdminPhonesScreen> {
               controller: labelCtrl,
               decoration: const InputDecoration(
                 labelText: 'Label (optional)',
-                hintText: 'VIP client',
               ),
             ),
           ],
@@ -151,18 +150,47 @@ class _AdminPhonesScreenState extends State<AdminPhonesScreen> {
 
   Future<void> _pickFromContacts() async {
     try {
+      if (kIsWeb) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Contacts are not available on web.')),
+          );
+        }
+        return;
+      }
+
       var granted = false;
-      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-        final status = await Permission.contacts.request();
-        granted = status.isGranted;
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        var status = await Permission.contacts.request();
+        if (!status.isGranted) {
+          if (status.isPermanentlyDenied && mounted) {
+            await openAppSettings();
+          }
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  'Contacts permission is required. Enable it in system settings for this app.',
+                ),
+                action: SnackBarAction(
+                  label: 'Settings',
+                  onPressed: openAppSettings,
+                ),
+              ),
+            );
+          }
+          return;
+        }
+        granted = await FlutterContacts.requestPermission(readonly: true);
       } else {
         granted = await FlutterContacts.requestPermission(readonly: true);
       }
+
       if (!granted) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Allow contacts access: Settings → Apps → Parrot Support → Permissions.'),
+              content: Text('Allow contacts access in the system prompt when asked.'),
             ),
           );
         }
@@ -338,17 +366,33 @@ class _AdminPhonesScreenState extends State<AdminPhonesScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFBEB),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFFCD34D)),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.green.withValues(alpha: 0.35)),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.brandBlack.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            child: const Text(
-              'Agents never see chats for numbers on this list. Only administrators can open or be assigned to these threads. Use digits only or pick from contacts.',
-              style: TextStyle(
-                color: Color(0xFF92400E),
-                fontSize: 13,
-                height: 1.35,
-              ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.shield_outlined, color: AppColors.brandRed, size: 22),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Agents never see chats for numbers on this list. Only administrators can open or be assigned. Use digits or pick from contacts.',
+                    style: TextStyle(
+                      color: AppColors.text,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),

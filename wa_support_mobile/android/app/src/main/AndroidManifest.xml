@@ -57,5 +57,10 @@
             <action android:name="android.intent.action.DIAL" />
             <data android:scheme="tel" />
         </intent>
+        <!-- Package visibility: contact provider (Android 11+) -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="vnd.android.cursor.dir/contact" />
+        </intent>
     </queries>
 </manifest>

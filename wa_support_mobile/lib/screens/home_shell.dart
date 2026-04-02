@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../branding/app_brand.dart';
 import '../config/app_colors.dart';
 import '../providers/app_state.dart';
 import '../widgets/parrot_brand_logo.dart';
@@ -47,14 +48,29 @@ class _HomeShellState extends State<HomeShell> {
       backgroundColor: AppColors.pageBg,
       appBar: AppBar(
         titleSpacing: 8,
+        surfaceTintColor: Colors.transparent,
         title: Row(
           children: [
-            const ParrotBrandMark(size: 34),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.asset(
+                AppBrand.logoAsset,
+                width: 36,
+                height: 36,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    const ParrotBrandMark(size: 34),
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 titles[safeIndex],
                 overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.brandBlack,
+                ),
               ),
             ),
           ],
