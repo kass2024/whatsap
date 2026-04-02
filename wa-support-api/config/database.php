@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Database connections read only from environment (.env).
+ * Do not put real hostnames, passwords, or database names here — set DB_* in .env on each machine.
+ */
+
 use Illuminate\Support\Str;
 use Pdo\Mysql;
 

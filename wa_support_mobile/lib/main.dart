@@ -1,15 +1,16 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
+import 'config/app_colors.dart';
 import 'firebase_options.dart';
 import 'providers/app_state.dart';
 import 'screens/home_shell.dart';
 import 'screens/login_screen.dart';
 import 'services/push_notification_service.dart';
+import 'widgets/parrot_brand_logo.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,9 +46,23 @@ class _Root extends StatelessWidget {
     final app = context.watch<AppState>();
     if (app.loading) {
       return const Scaffold(
-        backgroundColor: Color(0xFFF1F5F9),
+        backgroundColor: AppColors.pageBg,
         body: Center(
-          child: CircularProgressIndicator(color: Color(0xFF427431)),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const ParrotBrandMark(size: 72),
+              SizedBox(height: 28),
+              SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  color: AppColors.green,
+                  strokeWidth: 2.5,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }

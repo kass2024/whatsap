@@ -36,13 +36,20 @@ class AppState extends ChangeNotifier {
   Future<void> bootstrap() async {
     loading = true;
     notifyListeners();
-    user = await auth.me();
-    if (user != null) {
-      await _pushFcmToken();
-      await setupPushNotifications(registerFcmToken);
+    try {
+      user = await auth.me();
+      if (user != null) {
+        await _pushFcmToken();
+        await setupPushNotifications(registerFcmToken);
+      }
+    } catch (e, st) {
+      debugPrint('bootstrap: $e');
+      debugPrint('$st');
+      user = null;
+    } finally {
+      loading = false;
+      notifyListeners();
     }
-    loading = false;
-    notifyListeners();
   }
 
   Future<void> login(String email, String password) async {

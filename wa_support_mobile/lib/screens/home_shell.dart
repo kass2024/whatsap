@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../config/app_colors.dart';
 import '../providers/app_state.dart';
+import '../widgets/parrot_brand_logo.dart';
 import '../widgets/parrot_drawer.dart';
 import 'admin_phones_screen.dart';
 import 'chat_list_screen.dart';
@@ -42,7 +43,19 @@ class _HomeShellState extends State<HomeShell> {
     return Scaffold(
       backgroundColor: AppColors.pageBg,
       appBar: AppBar(
-        title: Text(titles[_index]),
+        titleSpacing: 8,
+        title: Row(
+          children: [
+            const ParrotBrandMark(size: 34),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                titles[_index],
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
       drawer: ParrotDrawer(
         currentIndex: _index,

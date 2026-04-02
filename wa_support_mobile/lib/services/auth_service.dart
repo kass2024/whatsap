@@ -33,9 +33,13 @@ class AuthService {
   Future<User?> me() async {
     final t = await _api.getToken();
     if (t == null) return null;
-    final res = await _api.get('/me');
-    if (res.statusCode != 200) return null;
-    return User.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+    try {
+      final res = await _api.get('/me');
+      if (res.statusCode != 200) return null;
+      return User.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
   }
 
   String _err(String body) {

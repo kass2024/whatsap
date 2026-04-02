@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../branding/app_brand.dart';
 import '../config/app_colors.dart';
 import '../providers/app_state.dart';
+import 'parrot_brand_logo.dart';
 
 class ParrotDrawer extends StatelessWidget {
   const ParrotDrawer({
@@ -39,26 +41,14 @@ class ParrotDrawer extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
                 child: Row(
                   children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.chat_bubble_rounded,
-                        color: Colors.white,
-                        size: 22,
-                      ),
-                    ),
+                    const ParrotBrandMark(size: 44),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'WA Support',
+                            AppBrand.appName,
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w700,
@@ -66,10 +56,11 @@ class ParrotDrawer extends StatelessWidget {
                                 ),
                           ),
                           Text(
-                            'Operations',
+                            AppBrand.shortSubtitle,
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.55),
                               fontSize: 11,
+                              height: 1.25,
                             ),
                           ),
                         ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'branding/app_brand.dart';
 import 'theme/parrot_theme.dart';
 
 class WaSupportApp extends StatelessWidget {
@@ -10,7 +11,7 @@ class WaSupportApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'WA Support',
+      title: AppBrand.appName,
       debugShowCheckedModeBanner: false,
       theme: buildParrotTheme(),
       home: home,

@@ -19,15 +19,16 @@ ThemeData buildParrotTheme() {
     scaffoldBackgroundColor: AppColors.pageBg,
     appBarTheme: const AppBarTheme(
       elevation: 0,
+      scrolledUnderElevation: 0,
       centerTitle: false,
       backgroundColor: Colors.white,
       foregroundColor: AppColors.text,
       surfaceTintColor: Colors.transparent,
       titleTextStyle: TextStyle(
-        fontSize: 18,
+        fontSize: 17,
         fontWeight: FontWeight.w700,
         color: AppColors.text,
-        letterSpacing: -0.3,
+        letterSpacing: -0.35,
       ),
     ),
     cardTheme: CardThemeData(
