@@ -33,10 +33,30 @@ class WhatsAppInboundService
                     continue;
                 }
 
+                if (! $this->appliesToOurPhoneNumberLine($value)) {
+                    continue;
+                }
+
                 $this->processStatuses($value['statuses'] ?? []);
                 $this->processMessages($value);
             }
         }
+    }
+
+    /**
+     * When WHATSAPP_PHONE_NUMBER_ID is set, ignore webhook changes for other business lines
+     * (e.g. forwarded payload from a hub that multiplexes one Meta app).
+     */
+    protected function appliesToOurPhoneNumberLine(array $value): bool
+    {
+        $ours = config('whatsapp.phone_number_id');
+        if (! is_string($ours) || $ours === '') {
+            return true;
+        }
+
+        $incoming = $value['metadata']['phone_number_id'] ?? null;
+
+        return is_string($incoming) && $incoming === $ours;
     }
 
     protected function processStatuses(mixed $statuses): void
