@@ -45,7 +45,9 @@ class AdminPhoneSettingsController extends Controller
             'items.*.label' => ['nullable', 'string', 'max:255'],
         ]);
 
-        if (! empty($data['items']) && is_array($data['items'])) {
+        // Mobile sends `items: []` to clear. Do not use $request->has('items') — Laravel treats
+        // empty arrays as "missing". Prefer validated payload.
+        if (array_key_exists('items', $data) && is_array($data['items'])) {
             $this->adminOnlyPhones->syncFromItems($data['items']);
         } else {
             $lines = preg_split("/\r\n|\n|\r/", $data['phones'] ?? '') ?: [];

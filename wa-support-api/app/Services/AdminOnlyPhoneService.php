@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AdminOnlyPhone;
+use App\Models\Conversation;
 use App\Support\Phone;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -44,6 +45,8 @@ class AdminOnlyPhoneService
      */
     public function syncFromItems(array $items): void
     {
+        $before = $this->restrictedPhoneList();
+
         $rows = [];
         foreach ($items as $row) {
             if (! is_array($row)) {
@@ -65,10 +68,14 @@ class AdminOnlyPhoneService
                 AdminOnlyPhone::query()->create($row);
             }
         });
+
+        $this->releaseAgentAssignmentsForPhonesNoLongerRestricted($before, array_keys($rows));
     }
 
     public function syncFromLines(array $lines): void
     {
+        $before = $this->restrictedPhoneList();
+
         $rows = [];
         foreach ($lines as $line) {
             $line = trim($line);
@@ -95,5 +102,22 @@ class AdminOnlyPhoneService
                 AdminOnlyPhone::query()->create($row);
             }
         });
+
+        $this->releaseAgentAssignmentsForPhonesNoLongerRestricted($before, array_keys($rows));
+    }
+
+    /**
+     * When a number is removed from the restricted list, clear assignment so the thread
+     * returns to the shared agent inbox (unassigned pool). While restricted, threads are
+     * often assigned to an admin — agents are excluded by both filters.
+     *
+     * @param  list<string>  $before
+     * @param  list<string>  $after
+     */
+    protected function releaseAgentAssignmentsForPhonesNoLongerRestricted(array $before, array $after): void
+    {
+        foreach (array_diff($before, $after) as $phone) {
+            Conversation::query()->where('phone', $phone)->update(['assigned_to' => null]);
+        }
     }
 }

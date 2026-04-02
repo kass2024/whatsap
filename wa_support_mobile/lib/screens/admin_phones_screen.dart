@@ -78,6 +78,7 @@ class _AdminPhonesScreenState extends State<AdminPhonesScreen> {
           .toList();
       await context.read<AppState>().settings.saveAdminPhonesItems(items);
       if (mounted) {
+        context.read<AppState>().bumpConversationListRefresh();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Restricted numbers saved.')),
         );

@@ -17,6 +17,14 @@ class AppState extends ChangeNotifier {
   User? user;
   bool loading = true;
 
+  /// Incremented after admin-only phone list changes so inbox/dashboard refetch `is_admin_only`.
+  int conversationListVersion = 0;
+
+  void bumpConversationListRefresh() {
+    conversationListVersion++;
+    notifyListeners();
+  }
+
   Future<void> registerFcmToken(String token) async {
     try {
       await api.postJson('/device/fcm-token', {'fcm_token': token});

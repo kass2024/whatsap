@@ -18,11 +18,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
   List<Conversation> _items = [];
   bool _loading = true;
   String? _error;
+  int _seenListVersion = -1;
 
   @override
-  void initState() {
-    super.initState();
-    _load();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final v = context.watch<AppState>().conversationListVersion;
+    if (v != _seenListVersion) {
+      _seenListVersion = v;
+      _load();
+    }
   }
 
   Future<void> _load() async {
