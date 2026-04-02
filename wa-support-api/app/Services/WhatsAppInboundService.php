@@ -15,12 +15,18 @@ class WhatsAppInboundService
         protected AgentNotificationService $notifier
     ) {}
 
-    public function handlePayload(array $payload): void
+    public function handlePayload(array $payload, ?string $correlationId = null): void
     {
         $entries = $payload['entry'] ?? [];
         if (! is_array($entries)) {
+            Log::channel('webhook')->warning('wa_support.inbound.no_entries', [
+                'correlation_id' => $correlationId,
+            ]);
+
             return;
         }
+
+        $changeIndex = 0;
 
         foreach ($entries as $entry) {
             $changes = $entry['changes'] ?? [];
@@ -28,17 +34,40 @@ class WhatsAppInboundService
                 continue;
             }
             foreach ($changes as $change) {
+                $changeIndex++;
                 $value = $change['value'] ?? [];
                 if (! is_array($value)) {
                     continue;
                 }
 
+                $pni = $value['metadata']['phone_number_id'] ?? null;
+                $msgN = isset($value['messages']) && is_array($value['messages']) ? count($value['messages']) : 0;
+                $stN = isset($value['statuses']) && is_array($value['statuses']) ? count($value['statuses']) : 0;
+
                 if (! $this->appliesToOurPhoneNumberLine($value)) {
+                    Log::channel('webhook')->info('wa_support.inbound.skip_change_wrong_line', [
+                        'correlation_id' => $correlationId,
+                        'change_index' => $changeIndex,
+                        'incoming_phone_number_id' => $pni,
+                        'incoming_type' => get_debug_type($pni),
+                        'configured_phone_number_id' => config('whatsapp.phone_number_id'),
+                        'messages_in_block' => $msgN,
+                        'statuses_in_block' => $stN,
+                    ]);
+
                     continue;
                 }
 
-                $this->processStatuses($value['statuses'] ?? []);
-                $this->processMessages($value);
+                Log::channel('webhook')->info('wa_support.inbound.apply_change', [
+                    'correlation_id' => $correlationId,
+                    'change_index' => $changeIndex,
+                    'phone_number_id' => $pni,
+                    'messages_in_block' => $msgN,
+                    'statuses_in_block' => $stN,
+                ]);
+
+                $this->processStatuses($value['statuses'] ?? [], $correlationId, $changeIndex);
+                $this->processMessages($value, $correlationId, $changeIndex);
             }
         }
     }
@@ -62,11 +91,13 @@ class WhatsAppInboundService
         return trim((string) $incoming) === trim((string) $ours);
     }
 
-    protected function processStatuses(mixed $statuses): void
+    protected function processStatuses(mixed $statuses, ?string $correlationId = null, int $changeIndex = 0): void
     {
         if (! is_array($statuses)) {
             return;
         }
+
+        $updated = 0;
 
         foreach ($statuses as $st) {
             if (! is_array($st)) {
@@ -86,12 +117,24 @@ class WhatsAppInboundService
             ];
             $internal = $map[$status] ?? null;
             if ($internal) {
-                Message::query()->where('wa_message_id', $waId)->update(['status' => $internal]);
+                $n = Message::query()->where('wa_message_id', $waId)->update(['status' => $internal]);
+                if ($n > 0) {
+                    $updated += $n;
+                }
             }
+        }
+
+        if (count($statuses) > 0) {
+            Log::channel('webhook')->info('wa_support.inbound.statuses_processed', [
+                'correlation_id' => $correlationId,
+                'change_index' => $changeIndex,
+                'status_objects_count' => count($statuses),
+                'rows_updated' => $updated,
+            ]);
         }
     }
 
-    protected function processMessages(array $value): void
+    protected function processMessages(array $value, ?string $correlationId = null, int $changeIndex = 0): void
     {
         $messages = $value['messages'] ?? [];
         if (! is_array($messages)) {
@@ -113,16 +156,33 @@ class WhatsAppInboundService
             }
         }
 
+        $types = [];
+
         foreach ($messages as $msg) {
             if (! is_array($msg)) {
                 continue;
             }
+            $types[] = (string) ($msg['type'] ?? 'unknown');
             try {
                 $this->processOneMessage($msg, $nameByPhone);
             } catch (\Throwable $e) {
                 Log::error('Inbound message failed', ['e' => $e->getMessage(), 'msg' => $msg]);
+                Log::channel('webhook')->error('wa_support.inbound.message_exception', [
+                    'correlation_id' => $correlationId,
+                    'change_index' => $changeIndex,
+                    'wa_message_id' => $msg['id'] ?? null,
+                    'type' => $msg['type'] ?? null,
+                    'message' => $e->getMessage(),
+                ]);
             }
         }
+
+        Log::channel('webhook')->info('wa_support.inbound.messages_processed', [
+            'correlation_id' => $correlationId,
+            'change_index' => $changeIndex,
+            'message_objects_count' => count($messages),
+            'types' => $types,
+        ]);
     }
 
     protected function processOneMessage(array $msg, array $nameByPhone): void
