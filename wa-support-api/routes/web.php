@@ -6,6 +6,8 @@ use App\Http\Controllers\Settings\AdminPhoneSettingsController;
 use App\Http\Controllers\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/up', fn () => response()->noContent(200));
+
 Route::get('/webhook/whatsapp', [WhatsAppWebhookController::class, 'verify']);
 Route::post('/webhook/whatsapp', [WhatsAppWebhookController::class, 'handle']);
 
