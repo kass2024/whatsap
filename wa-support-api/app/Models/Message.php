@@ -26,14 +26,15 @@ class Message extends Model
         'meta_payload',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'read_at_agent' => 'datetime',
-            'template_components' => 'array',
-            'meta_payload' => 'array',
-        ];
-    }
+    /**
+     * Laravel 10 reads $casts only; the casts() method is Laravel 11+ and was ignored,
+     * so meta_payload was sent raw to MySQL (array → "Array to string conversion").
+     */
+    protected $casts = [
+        'read_at_agent' => 'datetime',
+        'template_components' => 'array',
+        'meta_payload' => 'array',
+    ];
 
     public function conversation(): BelongsTo
     {

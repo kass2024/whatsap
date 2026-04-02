@@ -222,8 +222,8 @@ class WhatsAppInboundService
             $fileName = null;
 
             if ($type === 'text') {
-                $content = $msg['text']['body'] ?? '';
-                $preview = mb_substr((string) $content, 0, 200);
+                $content = $this->normalizeTextBody($msg['text']['body'] ?? '');
+                $preview = mb_substr($content, 0, 200);
                 $messageType = 'text';
             } elseif (in_array($type, ['image', 'audio', 'video', 'document', 'sticker'], true)) {
                 $media = $msg[$type] ?? [];
@@ -283,6 +283,31 @@ class WhatsAppInboundService
             $conversation->refresh();
             $this->notifier->notifyNewCustomerMessage($conversation, $preview);
         });
+    }
+
+    /**
+     * WhatsApp Cloud API may expose body as string or (rarely) structured data — DB column is string.
+     */
+    protected function normalizeTextBody(mixed $body): string
+    {
+        if (is_string($body)) {
+            return $body;
+        }
+        if (is_numeric($body)) {
+            return (string) $body;
+        }
+        if ($body === null) {
+            return '';
+        }
+        if (is_array($body) || is_object($body)) {
+            try {
+                return json_encode($body, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+            } catch (\JsonException) {
+                return '';
+            }
+        }
+
+        return '';
     }
 
     protected function guessExtension(string $messageType, ?string $mime, ?string $fileName): string

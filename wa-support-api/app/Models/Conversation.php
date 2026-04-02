@@ -19,13 +19,10 @@ class Conversation extends Model
         'unread_count',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'last_customer_message_at' => 'datetime',
-            'last_message_at' => 'datetime',
-        ];
-    }
+    protected $casts = [
+        'last_customer_message_at' => 'datetime',
+        'last_message_at' => 'datetime',
+    ];
 
     public function assignedAgent(): BelongsTo
     {
