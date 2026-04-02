@@ -51,13 +51,18 @@ class AgentNotificationService
     {
         $q = User::query()->whereNotNull('fcm_token');
 
+        if (app(AdminOnlyPhoneService::class)->isRestricted($conversation->phone)) {
+            $q->where('role', UserRole::Admin);
+
+            return $q->pluck('fcm_token')->filter()->unique()->values()->all();
+        }
+
         if ($conversation->assigned_to) {
             $q->where(function ($w) use ($conversation) {
                 $w->where('id', $conversation->assigned_to)
                     ->orWhere('role', UserRole::Admin);
             });
         } else {
-            // Unassigned: notify every agent + admin (previously admin-only, so agents never got alerts).
             $q->whereIn('role', [UserRole::Agent, UserRole::Admin]);
         }
 

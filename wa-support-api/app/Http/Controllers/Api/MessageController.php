@@ -191,14 +191,7 @@ class MessageController extends Controller
 
     protected function transformMessage(Message $m): array
     {
-        $mediaUrl = null;
-        if ($m->media_path && $m->media_disk) {
-            try {
-                $mediaUrl = Storage::disk($m->media_disk)->url($m->media_path);
-            } catch (\Throwable) {
-                $mediaUrl = null;
-            }
-        }
+        $mediaUrl = $this->absolutePublicMediaUrl($m->media_disk, $m->media_path);
 
         return [
             'id' => $m->id,
@@ -215,6 +208,28 @@ class MessageController extends Controller
             'template_language' => $m->template_language,
             'created_at' => $m->created_at->toIso8601String(),
         ];
+    }
+
+    /**
+     * Mobile clients need an absolute https URL; Storage::url may return a path only.
+     */
+    protected function absolutePublicMediaUrl(?string $disk, ?string $path): ?string
+    {
+        if (! is_string($disk) || $disk === '' || ! is_string($path) || $path === '') {
+            return null;
+        }
+
+        try {
+            $relative = Storage::disk($disk)->url($path);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if (str_starts_with($relative, 'http://') || str_starts_with($relative, 'https://')) {
+            return $relative;
+        }
+
+        return rtrim((string) config('app.url'), '/').'/'.ltrim($relative, '/');
     }
 
     protected function authorizeView(Request $request, Conversation $conversation): void

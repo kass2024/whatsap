@@ -10,17 +10,22 @@ class AgentSummary {
     required this.id,
     required this.name,
     this.email,
+    this.role = 'agent',
   });
 
   final int id;
   final String name;
   final String? email;
 
+  /// `admin` or `agent` — admin-only chats may only be assigned to `admin`.
+  final String role;
+
   factory AgentSummary.fromJson(Map<String, dynamic> j) {
     return AgentSummary(
       id: j['id'] as int,
       name: j['name'] as String,
       email: j['email'] as String?,
+      role: j['role'] as String? ?? 'agent',
     );
   }
 }

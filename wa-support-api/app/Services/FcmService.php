@@ -64,6 +64,11 @@ class FcmService
                 return false;
             }
 
+            Log::info('FCM message accepted', [
+                'token_prefix' => substr($token, 0, 14).'…',
+                'message_id' => $response->json('name'),
+            ]);
+
             return true;
         } catch (\Throwable $e) {
             Log::error('FCM exception', ['e' => $e->getMessage()]);

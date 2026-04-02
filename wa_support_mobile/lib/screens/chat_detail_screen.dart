@@ -61,6 +61,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   bool _admin = false;
   var _bootStarted = false;
 
+  /// Admin-only threads may only be assigned to users with role `admin`.
+  List<AgentSummary> get _assignableAgents {
+    if (_conv.isAdminOnly) {
+      return _agents.where((a) => a.role == 'admin').toList();
+    }
+    return _agents;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -530,10 +538,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           value: null,
                           child: Text('Unassigned'),
                         ),
-                        ..._agents.map(
+                        ..._assignableAgents.map(
                           (a) => DropdownMenuItem<int?>(
                             value: a.id,
-                            child: Text(a.name),
+                            child: Text(a.role == 'admin' ? '${a.name} (Admin)' : a.name),
                           ),
                         ),
                       ],
@@ -709,9 +717,44 @@ class _MessageBody extends StatelessWidget {
     final isAgent = message.isAgent;
 
     if (message.messageType == 'image' && message.mediaUrl != null) {
-      return Image.network(
-        message.mediaUrl!,
-        errorBuilder: (_, __, ___) => const Text('[Image]'),
+      final u = message.mediaUrl!;
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 280, maxWidth: 260),
+          child: Image.network(
+            u,
+            fit: BoxFit.cover,
+            loadingBuilder: (ctx, child, progress) {
+              if (progress == null) {
+                return child;
+              }
+              return const Padding(
+                padding: EdgeInsets.all(24),
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              );
+            },
+            errorBuilder: (_, __, ___) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.broken_image_outlined, color: isAgent ? Colors.white70 : AppColors.muted),
+                const SizedBox(height: 6),
+                Text(
+                  'Could not load image. Open the link on a desktop browser if the file is on the server.',
+                  style: TextStyle(fontSize: 12, color: isAgent ? Colors.white70 : AppColors.muted),
+                ),
+                TextButton(
+                  onPressed: () => launchUrl(Uri.parse(u), mode: LaunchMode.externalApplication),
+                  child: Text('Try open URL', style: TextStyle(color: isAgent ? Colors.white : AppColors.green)),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
     if (message.messageType == 'audio' && message.mediaUrl != null) {

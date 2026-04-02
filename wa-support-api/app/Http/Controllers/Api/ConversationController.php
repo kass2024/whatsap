@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Concerns\AuthorizesConversationAccess;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
+use App\Models\User;
 use App\Services\AdminOnlyPhoneService;
 use App\Services\WhatsAppSessionService;
 use App\Support\Phone;
@@ -112,11 +113,24 @@ class ConversationController extends Controller
             'assigned_to' => ['nullable', 'exists:users,id'],
         ]);
 
+        if ($data['assigned_to']) {
+            $assignee = User::query()->find($data['assigned_to']);
+            if (
+                $assignee
+                && $this->adminOnlyPhones->isRestricted($conversation->phone)
+                && ! $assignee->isAdmin()
+            ) {
+                return response()->json([
+                    'message' => 'This number is admin-only. Assign to an administrator only.',
+                ], 422);
+            }
+        }
+
         $conversation->assigned_to = $data['assigned_to'];
         $conversation->save();
 
         if ($data['assigned_to']) {
-            $agent = \App\Models\User::query()->find($data['assigned_to']);
+            $agent = User::query()->find($data['assigned_to']);
             if ($agent) {
                 app(\App\Services\AgentNotificationService::class)->notifyConversationAssigned($conversation, $agent);
             }

@@ -37,6 +37,36 @@ class AdminOnlyPhoneService
      *
      * @param  list<string>  $lines
      */
+    /**
+     * Structured sync from mobile (phone + optional label per row).
+     *
+     * @param  array<int, array{phone?: mixed, label?: mixed}>  $items
+     */
+    public function syncFromItems(array $items): void
+    {
+        $rows = [];
+        foreach ($items as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $raw = (string) ($row['phone'] ?? '');
+            $phone = Phone::normalize($raw);
+            if ($phone === '') {
+                continue;
+            }
+            $label = $row['label'] ?? null;
+            $label = is_string($label) && $label !== '' ? mb_substr(trim($label), 0, 255) : null;
+            $rows[$phone] = ['phone' => $phone, 'label' => $label];
+        }
+
+        DB::transaction(function () use ($rows) {
+            AdminOnlyPhone::query()->delete();
+            foreach ($rows as $row) {
+                AdminOnlyPhone::query()->create($row);
+            }
+        });
+    }
+
     public function syncFromLines(array $lines): void
     {
         $rows = [];

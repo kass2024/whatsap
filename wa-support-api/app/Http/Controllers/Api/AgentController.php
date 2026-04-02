@@ -12,10 +12,17 @@ class AgentController extends Controller
     public function index(): JsonResponse
     {
         $rows = User::query()
-            ->where('role', UserRole::Agent)
+            ->whereIn('role', [UserRole::Agent, UserRole::Admin])
             ->orderBy('name')
-            ->get(['id', 'name', 'email']);
+            ->get(['id', 'name', 'email', 'role']);
 
-        return response()->json(['data' => $rows]);
+        $data = $rows->map(fn (User $u) => [
+            'id' => $u->id,
+            'name' => $u->name,
+            'email' => $u->email,
+            'role' => $u->role->value,
+        ]);
+
+        return response()->json(['data' => $data]);
     }
 }

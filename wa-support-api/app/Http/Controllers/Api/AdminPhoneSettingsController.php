@@ -40,10 +40,17 @@ class AdminPhoneSettingsController extends Controller
 
         $data = $request->validate([
             'phones' => ['nullable', 'string', 'max:65535'],
+            'items' => ['nullable', 'array', 'max:500'],
+            'items.*.phone' => ['required', 'string', 'max:32'],
+            'items.*.label' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $lines = preg_split("/\r\n|\n|\r/", $data['phones'] ?? '') ?: [];
-        $this->adminOnlyPhones->syncFromLines($lines);
+        if (! empty($data['items']) && is_array($data['items'])) {
+            $this->adminOnlyPhones->syncFromItems($data['items']);
+        } else {
+            $lines = preg_split("/\r\n|\n|\r/", $data['phones'] ?? '') ?: [];
+            $this->adminOnlyPhones->syncFromLines($lines);
+        }
 
         $count = $this->adminOnlyPhones->allOrdered()->count();
 

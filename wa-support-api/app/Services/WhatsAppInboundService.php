@@ -237,7 +237,7 @@ class WhatsAppInboundService
                 $preview = '['.strtoupper($messageType).'] '.($content ?? '');
 
                 if (is_string($mediaId)) {
-                    $ext = $this->guessExtension($messageType, $mime, $fileName);
+                    $ext = $this->guessExtension($type, $mime, $fileName);
                     try {
                         $stored = $this->cloud->downloadMediaToDisk($mediaId, $ext, is_string($mime) ? $mime : null);
                         $mediaDisk = $stored['disk'];
@@ -256,8 +256,31 @@ class WhatsAppInboundService
                 $content = json_encode($msg['interactive'] ?? []);
                 $messageType = 'text';
                 $preview = '[Interactive]';
+            } elseif ($type === 'unsupported') {
+                $errTitle = null;
+                $errors = $msg['errors'] ?? [];
+                if (is_array($errors) && isset($errors[0]) && is_array($errors[0])) {
+                    $errTitle = $errors[0]['title'] ?? $errors[0]['message'] ?? null;
+                }
+                $content = is_string($errTitle) && $errTitle !== ''
+                    ? $errTitle
+                    : 'This message type is not supported in the inbox yet.';
+                $messageType = 'text';
+                $preview = '[Unsupported] '.mb_substr($content, 0, 120);
+            } elseif ($type === 'location') {
+                $loc = $msg['location'] ?? [];
+                $lat = is_array($loc) ? ($loc['latitude'] ?? null) : null;
+                $lng = is_array($loc) ? ($loc['longitude'] ?? null) : null;
+                $name = is_array($loc) ? ($loc['name'] ?? null) : null;
+                $content = is_string($name) && $name !== ''
+                    ? $name
+                    : (is_numeric($lat) && is_numeric($lng)
+                        ? sprintf('Location: %s, %s', $lat, $lng)
+                        : '[Location]');
+                $messageType = 'text';
+                $preview = mb_substr($content, 0, 200);
             } else {
-                $content = json_encode($msg);
+                $content = '['.ucfirst((string) $type).'] — open on WhatsApp to view.';
                 $messageType = 'text';
                 $preview = '['.$type.']';
             }
@@ -310,7 +333,10 @@ class WhatsAppInboundService
         return '';
     }
 
-    protected function guessExtension(string $messageType, ?string $mime, ?string $fileName): string
+    /**
+     * @param  string  $waType  WhatsApp message type: image, audio, video, document, sticker
+     */
+    protected function guessExtension(string $waType, ?string $mime, ?string $fileName): string
     {
         if (is_string($fileName) && str_contains($fileName, '.')) {
             return pathinfo($fileName, PATHINFO_EXTENSION) ?: 'bin';
@@ -331,7 +357,8 @@ class WhatsAppInboundService
             return $map[$mime] ?? 'bin';
         }
 
-        return match ($messageType) {
+        return match ($waType) {
+            'sticker' => 'webp',
             'image' => 'jpg',
             'audio' => 'ogg',
             'video' => 'mp4',
