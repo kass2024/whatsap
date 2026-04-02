@@ -1,15 +1,16 @@
 import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 
-/// Resolves the Laravel API base URL.
+/// Laravel API base URL for **Parrot Support** (production: `whatsapp.parrotcanada.site`).
 ///
-/// **Local API** (emulator / LAN / desktop):
-/// `flutter run --dart-define=API_BASE=http://10.0.2.2:8000/api` (Android emulator → host)
-/// `flutter run --dart-define=API_BASE=http://192.168.x.x:8000/api` (physical phone → PC)
+/// **Release builds** always use [productionBaseUrl]. A mistaken
+/// `--dart-define=API_BASE=http://192.168...` in the build command cannot override production.
 ///
-/// Debug builds **without** `API_BASE` use **production** on mobile so real devices work.
-/// Web debug still uses localhost for typical `php artisan serve` flow.
+/// **Debug / profile** (local dev):
+/// - Use **`API_BASE`** only (not `productionBaseUrl`):
+///   `--dart-define=API_BASE=https://whatsapp.parrotcanada.site/api`
+/// - Local Laravel: `--dart-define=API_BASE=http://10.0.2.2:8000/api` (emulator) etc.
+/// - If unset: **production** on mobile/desktop; **localhost** on web.
 class ApiConfig {
-  /// Production API (used in release builds when `API_BASE` is not passed).
   static const String productionBaseUrl = 'https://whatsapp.parrotcanada.site/api';
 
   /// Host only (for UI), e.g. `whatsapp.parrotcanada.site`.
@@ -24,18 +25,28 @@ class ApiConfig {
   }
 
   static String get baseUrl {
+    if (kReleaseMode) {
+      return productionBaseUrl;
+    }
+
     const fromEnv = String.fromEnvironment('API_BASE', defaultValue: '');
     if (fromEnv.isNotEmpty) {
       return fromEnv;
     }
-    if (kReleaseMode) {
-      return productionBaseUrl;
-    }
     if (kIsWeb) {
       return 'http://127.0.0.1:8000/api';
     }
-    // Debug/profile on iOS/Android/desktop: use production unless API_BASE is set.
-    // (10.0.2.2 only works on the *emulator*; physical phones would hang trying to reach it.)
     return productionBaseUrl;
+  }
+
+  static String _normalizeApiBase(String url) {
+    var u = url.trim();
+    while (u.endsWith('/')) {
+      u = u.substring(0, u.length - 1);
+    }
+    if (!u.endsWith('/api')) {
+      u = '$u/api';
+    }
+    return u;
   }
 }
