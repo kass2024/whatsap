@@ -1,0 +1,26 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+build/
+**/Generated.xcconfig
+**/flutter_export_environment.sh
+**/Flutter.podspec
+
+# Firebase (never commit real keys in open repos)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# IDE
+.idea/
+*.iml
+
+# Android
+android/local.properties
+android/.gradle/
+android/captures/
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec

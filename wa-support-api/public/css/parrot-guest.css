@@ -1,0 +1,638 @@
+/**
+ * WA Support — guest pages (welcome + auth)
+ * Design tokens & layout logic aligned with Parrot admin-login (split shell, PCV greens).
+ */
+:root {
+  --pcv-green: #427431;
+  --pcv-green-hover: #356a2a;
+  --pcv-green-deep: #2f5a26;
+  --pcv-red: #e21d1e;
+  --pcv-blue: #3661b9;
+  --pcv-input-bg: #e8f0fe;
+  --pcv-text: #1e293b;
+  --pcv-text-muted: #64748b;
+  --pcv-border: #c5d9f5;
+  --pcv-card: rgba(255, 255, 255, 0.92);
+  --pcv-danger: #dc2626;
+  --pcv-danger-bg: #fef2f2;
+  --shell-glow: 0 32px 64px -12px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body.parrot-guest {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  min-height: 100vh;
+  color: var(--pcv-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  position: relative;
+  overflow-x: hidden;
+  background: radial-gradient(ellipse 100% 80% at 15% 10%, rgba(66, 116, 49, 0.35) 0%, transparent 55%),
+    radial-gradient(ellipse 80% 60% at 90% 85%, rgba(226, 29, 30, 0.18) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 50% at 50% 50%, rgba(54, 97, 185, 0.08) 0%, transparent 60%),
+    linear-gradient(168deg, #e8edf4 0%, #f1f5f9 45%, #e2e8f0 100%);
+}
+
+body.parrot-guest::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* --- Shell (login / small guest forms) --- */
+.parrot-shell {
+  width: 100%;
+  max-width: 980px;
+  background: var(--pcv-card);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: 28px;
+  box-shadow: var(--shell-glow);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr;
+  position: relative;
+  z-index: 1;
+}
+
+@media (min-width: 900px) {
+  .parrot-shell {
+    grid-template-columns: 1fr 1fr;
+    min-height: 580px;
+  }
+}
+
+.parrot-brand-panel {
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.08) 0%, transparent 42%),
+    linear-gradient(165deg, var(--pcv-green) 0%, var(--pcv-green-deep) 55%, #1e3d18 100%);
+  color: #fff;
+  padding: 44px 32px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+}
+
+.parrot-brand-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 70% 100%, rgba(226, 29, 30, 0.15) 0%, transparent 45%);
+  pointer-events: none;
+}
+
+.parrot-logo-wrap {
+  width: 200px;
+  height: 200px;
+  max-width: min(220px, 58vw);
+  margin-bottom: 24px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: 3px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  animation: parrotLogoFloat 6s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes parrotLogoFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.parrot-logo-wrap svg {
+  width: 52%;
+  height: 52%;
+  color: #fff;
+}
+
+.parrot-mobile-brand .logo-sm svg {
+  color: var(--pcv-green);
+}
+
+.parrot-brand-panel h1 {
+  font-size: 1.65rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+}
+
+.parrot-brand-panel .lead {
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.92);
+  max-width: 340px;
+}
+
+.parrot-brand-panel .lead strong {
+  font-weight: 700;
+  color: #fff;
+}
+
+.parrot-cta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 28px;
+  background: var(--pcv-red);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 12px 20px;
+  border-radius: 10px;
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(226, 29, 30, 0.4);
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.parrot-cta-pill:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  color: #fff;
+}
+
+.parrot-form-panel {
+  padding: 44px 40px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: linear-gradient(180deg, #ffffff 0%, #fafbfd 100%);
+  position: relative;
+}
+
+.parrot-form-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--pcv-green), var(--pcv-blue), var(--pcv-red));
+  opacity: 0.85;
+}
+
+.parrot-form-panel-inner {
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto;
+}
+
+.parrot-mobile-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+@media (min-width: 900px) {
+  .parrot-mobile-brand {
+    display: none;
+  }
+}
+
+.parrot-mobile-brand .logo-sm {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(66, 116, 49, 0.08);
+  box-shadow: 0 6px 20px rgba(66, 116, 49, 0.18);
+  border: 2px solid rgba(66, 116, 49, 0.15);
+  margin-bottom: 12px;
+}
+
+.parrot-mobile-brand .logo-sm svg {
+  width: 56%;
+  height: 56%;
+}
+
+.parrot-mobile-brand h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--pcv-text);
+}
+
+.parrot-mobile-brand p {
+  font-size: 0.8rem;
+  color: var(--pcv-text-muted);
+  margin-top: 4px;
+}
+
+.parrot-form-panel h2 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--pcv-text);
+  margin-bottom: 6px;
+}
+
+.parrot-subtitle {
+  font-size: 0.875rem;
+  color: var(--pcv-text-muted);
+  margin-bottom: 28px;
+}
+
+.parrot-form-group {
+  margin-bottom: 18px;
+}
+
+.parrot-form-group label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--pcv-text);
+  margin-bottom: 8px;
+}
+
+.parrot-input-shell {
+  position: relative;
+}
+
+.parrot-input-shell input[type="text"],
+.parrot-input-shell input[type="email"],
+.parrot-input-shell input[type="password"] {
+  width: 100%;
+  padding: 13px 44px 13px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--pcv-border);
+  background: var(--pcv-input-bg);
+  font-size: 0.95rem;
+  color: var(--pcv-text);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.parrot-input-shell input::placeholder {
+  color: #94a3b8;
+}
+
+.parrot-input-shell input:focus {
+  outline: none;
+  border-color: var(--pcv-green);
+  box-shadow: 0 0 0 3px rgba(66, 116, 49, 0.22);
+}
+
+.parrot-pw-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--pcv-text-muted);
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 8px;
+  line-height: 0;
+}
+
+.parrot-pw-toggle:hover {
+  color: var(--pcv-green);
+}
+
+.parrot-row-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 22px;
+  font-size: 0.8125rem;
+}
+
+.parrot-row-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pcv-text-muted);
+  cursor: pointer;
+  user-select: none;
+  margin: 0;
+}
+
+.parrot-row-options input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--pcv-green);
+}
+
+.parrot-row-options a {
+  color: var(--pcv-green);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.parrot-row-options a:hover {
+  text-decoration: underline;
+}
+
+.parrot-btn-login {
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  border-radius: 12px;
+  background: var(--pcv-green);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  box-shadow: 0 4px 16px rgba(66, 116, 49, 0.38);
+}
+
+.parrot-btn-login:hover {
+  background: var(--pcv-green-hover);
+}
+
+.parrot-btn-login:active {
+  transform: translateY(1px);
+}
+
+.parrot-btn-login i {
+  margin-right: 8px;
+}
+
+.parrot-error {
+  background: var(--pcv-danger-bg);
+  color: var(--pcv-danger);
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border: 1px solid #fecaca;
+}
+
+.parrot-footer-note {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #e8ecf1;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .parrot-logo-wrap {
+    animation: none;
+  }
+}
+
+/* --- Welcome page (full marketing shell) --- */
+body.parrot-welcome {
+  font-family: "Inter", system-ui, sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  color: var(--pcv-text);
+  background: radial-gradient(ellipse 100% 80% at 15% 10%, rgba(66, 116, 49, 0.35) 0%, transparent 55%),
+    radial-gradient(ellipse 80% 60% at 90% 85%, rgba(226, 29, 30, 0.15) 0%, transparent 50%),
+    linear-gradient(168deg, #e8edf4 0%, #f1f5f9 50%, #e2e8f0 100%);
+  padding: 32px 16px 48px;
+}
+
+.parrot-welcome::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+.parrot-welcome-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.parrot-welcome-hero {
+  background: var(--pcv-card);
+  backdrop-filter: blur(16px);
+  border-radius: 28px;
+  box-shadow: var(--shell-glow);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) {
+  .parrot-welcome-hero {
+    grid-template-columns: 1.1fr 1fr;
+    min-height: 420px;
+  }
+}
+
+.parrot-welcome-brand {
+  background: linear-gradient(165deg, var(--pcv-green) 0%, var(--pcv-green-deep) 100%);
+  color: #fff;
+  padding: 48px 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+}
+
+.parrot-welcome-brand::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 80% 80%, rgba(226, 29, 30, 0.12) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.parrot-welcome-brand h1 {
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin-bottom: 16px;
+}
+
+.parrot-welcome-brand p {
+  font-size: 1rem;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.92);
+  max-width: 420px;
+}
+
+.parrot-welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.parrot-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--pcv-green-deep);
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.parrot-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+  color: var(--pcv-green-deep);
+}
+
+.parrot-btn-primary i,
+.parrot-btn-ghost i {
+  font-size: 1rem;
+}
+
+.parrot-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  padding: 14px 20px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.parrot-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.parrot-welcome-side {
+  padding: 40px 36px;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+}
+
+.parrot-welcome-side h2 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--pcv-text-muted);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.parrot-feature {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.parrot-feature:hover {
+  border-color: rgba(66, 116, 49, 0.35);
+  box-shadow: 0 4px 16px rgba(66, 116, 49, 0.08);
+}
+
+.parrot-feature-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(66, 116, 49, 0.1);
+  color: var(--pcv-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.1rem;
+}
+
+.parrot-feature h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--pcv-text);
+  margin-bottom: 4px;
+}
+
+.parrot-feature p {
+  font-size: 0.8125rem;
+  color: var(--pcv-text-muted);
+  line-height: 1.5;
+}
+
+.parrot-code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 6px;
+  color: #334155;
+  word-break: break-all;
+}
+
+.parrot-welcome-footer {
+  text-align: center;
+  margin-top: 32px;
+  font-size: 0.8rem;
+  color: var(--pcv-text-muted);
+}
+
+.parrot-status-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pcv-green);
+  font-weight: 600;
+}
+
+.parrot-status-dot span.dot {
+  width: 8px;
+  height: 8px;
+  background: var(--pcv-green);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--pcv-green);
+  animation: parrotPulse 2s ease-in-out infinite;
+}
+
+@keyframes parrotPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

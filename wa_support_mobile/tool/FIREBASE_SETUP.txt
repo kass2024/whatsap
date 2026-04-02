@@ -1,0 +1,48 @@
+WA Support mobile — Firebase Cloud Messaging (FCM)
+=================================================
+
+1) Install Flutter SDK and add it to PATH. From this folder run:
+
+   flutter create . --platforms=android,ios
+
+   This creates android/, ios/, and local.properties with your Flutter SDK path.
+
+2) Firebase Console (https://console.firebase.google.com)
+   - Create a project (or use an existing one). Enable Cloud Messaging.
+   - Add an Android app with package name matching android/app/build.gradle
+     (default after flutter create: com.example.wa_support_mobile — change it if you publish).
+   - Add an iOS app with the bundle id from ios/Runner.xcodeproj.
+   - Download google-services.json → android/app/google-services.json
+   - Download GoogleService-Info.plist → ios/Runner/GoogleService-Info.plist
+
+3) FlutterFire CLI (generates lib/firebase_options.dart with real keys)
+
+   dart pub global activate flutterfire_cli
+   flutterfire configure
+
+   Select your Firebase project and platforms. This overwrites lib/firebase_options.dart.
+
+4) Android Gradle — after `flutter create`, merge these into the generated files:
+
+   - Project-level build.gradle: classpath for Google services (FlutterFire often adds this).
+   - App-level build.gradle: apply plugin 'com.google.gms.google-services'
+   - minSdkVersion: 23 or higher (see Firebase docs).
+
+   `flutterfire configure` can apply many of these automatically.
+
+5) iOS — in Xcode, enable Push Notifications + Background Modes → Remote notifications.
+   Upload your APNs key to Firebase Console → Project settings → Cloud Messaging.
+
+6) Backend (Laravel wa-support-api) already sends FCM via HTTP v1 using a service account.
+   Set in .env:
+
+   FCM_PROJECT_ID=your-gcp-project-id
+   FCM_SERVICE_ACCOUNT_PATH=/path/to/service-account.json
+
+   The mobile app registers tokens via POST /api/device/fcm-token (Sanctum).
+
+7) Run the app with your API base URL:
+
+   flutter run --dart-define=API_BASE=http://10.0.2.2:8000/api
+
+   (10.0.2.2 is the Android emulator alias for the host machine’s localhost.)
