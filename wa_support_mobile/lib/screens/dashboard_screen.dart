@@ -105,7 +105,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           physics: const NeverScrollableScrollPhysics(),
                           mainAxisSpacing: 12,
                           crossAxisSpacing: 12,
-                          childAspectRatio: cols == 4 ? 1.45 : 1.35,
+                          // Slightly taller tiles on phone — avoids "bottom overflow" with hint line.
+                          childAspectRatio: cols == 4 ? 1.45 : 1.12,
                           children: [
                             _KpiCard(
                               label: 'Visible conversations',

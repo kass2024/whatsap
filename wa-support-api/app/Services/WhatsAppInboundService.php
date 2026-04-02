@@ -55,8 +55,11 @@ class WhatsAppInboundService
         }
 
         $incoming = $value['metadata']['phone_number_id'] ?? null;
+        if ($incoming === null || $incoming === '' || ! is_scalar($incoming)) {
+            return false;
+        }
 
-        return is_string($incoming) && $incoming === $ours;
+        return trim((string) $incoming) === trim((string) $ours);
     }
 
     protected function processStatuses(mixed $statuses): void
