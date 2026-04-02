@@ -40,6 +40,9 @@ class _HomeShellState extends State<HomeShell> {
       const ProfileScreen(),
     ];
 
+    final maxIndex = pages.length - 1;
+    final safeIndex = _index.clamp(0, maxIndex);
+
     return Scaffold(
       backgroundColor: AppColors.pageBg,
       appBar: AppBar(
@@ -50,7 +53,7 @@ class _HomeShellState extends State<HomeShell> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                titles[_index],
+                titles[safeIndex],
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -65,8 +68,35 @@ class _HomeShellState extends State<HomeShell> {
         },
       ),
       body: IndexedStack(
-        index: _index.clamp(0, pages.length - 1),
+        index: safeIndex,
         children: pages,
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: safeIndex,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        destinations: [
+          const NavigationDestination(
+            icon: Icon(Icons.dashboard_outlined),
+            selectedIcon: Icon(Icons.dashboard),
+            label: 'Dashboard',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.chat_bubble_outline),
+            selectedIcon: Icon(Icons.chat_bubble),
+            label: 'Chats',
+          ),
+          if (admin)
+            const NavigationDestination(
+              icon: Icon(Icons.shield_outlined),
+              selectedIcon: Icon(Icons.shield),
+              label: 'Admin',
+            ),
+          const NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
       ),
     );
   }

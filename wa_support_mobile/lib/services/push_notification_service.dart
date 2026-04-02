@@ -55,7 +55,11 @@ Future<void> setupPushNotifications(
     const AndroidNotificationChannel(
       _androidChannelId,
       _androidChannelName,
+      description: 'New customer WhatsApp messages',
       importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+      showBadge: true,
     ),
   );
 
@@ -70,14 +74,19 @@ Future<void> setupPushNotifications(
         m.hashCode,
         title,
         body,
-        const NotificationDetails(
+        NotificationDetails(
           android: AndroidNotificationDetails(
             _androidChannelId,
             _androidChannelName,
+            channelShowBadge: true,
             importance: Importance.high,
             priority: Priority.high,
+            playSound: true,
+            enableVibration: true,
+            visibility: NotificationVisibility.public,
+            category: AndroidNotificationCategory.message,
           ),
-          iOS: DarwinNotificationDetails(),
+          iOS: const DarwinNotificationDetails(presentSound: true),
         ),
       );
     });

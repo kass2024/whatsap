@@ -35,6 +35,20 @@ class FcmService
                     'body' => $body,
                 ],
                 'data' => collect($data)->map(fn ($v) => (string) $v)->all(),
+                'android' => [
+                    'priority' => 'HIGH',
+                    'notification' => [
+                        'channel_id' => 'wa_support_alerts',
+                        'sound' => 'default',
+                    ],
+                ],
+                'apns' => [
+                    'payload' => [
+                        'aps' => [
+                            'sound' => 'default',
+                        ],
+                    ],
+                ],
             ],
         ];
 

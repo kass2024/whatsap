@@ -21,6 +21,16 @@ import '../services/chat_service.dart';
 import '../widgets/whatsapp_chat_composer.dart';
 import 'admin_phones_screen.dart';
 
+/// Merges by DB id so poll + send cannot duplicate the same message in the list.
+List<ChatMessage> _mergeMessagesById(List<ChatMessage> base, Iterable<ChatMessage> extra) {
+  final map = <int, ChatMessage>{for (final m in base) m.id: m};
+  for (final m in extra) {
+    map[m.id] = m;
+  }
+  final out = map.values.toList()..sort((a, b) => a.id.compareTo(b.id));
+  return out;
+}
+
 class ChatDetailScreen extends StatefulWidget {
   const ChatDetailScreen({super.key, required this.conversation});
 
@@ -126,19 +136,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         if (next.isEmpty || !mounted) {
           return;
         }
-        for (final m in next) {
-          if (m.id > _maxId) {
-            _maxId = m.id;
-          }
-        }
         setState(() {
-          final ids = _messages.map((e) => e.id).toSet();
+          _messages = _mergeMessagesById(_messages, next);
           for (final m in next) {
-            if (!ids.contains(m.id)) {
-              _messages = [..._messages, m];
+            if (m.id > _maxId) {
+              _maxId = m.id;
             }
           }
-          _messages.sort((a, b) => a.id.compareTo(b.id));
         });
         _scrollBottom();
       } catch (_) {}
@@ -174,7 +178,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     try {
       final m = await _chat.sendText(_conv.id, t);
       setState(() {
-        _messages = [..._messages, m];
+        _messages = _mergeMessagesById(_messages, [m]);
         if (m.id > _maxId) {
           _maxId = m.id;
         }
@@ -196,7 +200,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     try {
       final m = await _chat.sendMedia(_conv.id, File(x.path));
       setState(() {
-        _messages = [..._messages, m];
+        _messages = _mergeMessagesById(_messages, [m]);
         if (m.id > _maxId) {
           _maxId = m.id;
         }
@@ -217,7 +221,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     try {
       final m = await _chat.sendMedia(_conv.id, File(r.files.single.path!));
       setState(() {
-        _messages = [..._messages, m];
+        _messages = _mergeMessagesById(_messages, [m]);
         if (m.id > _maxId) {
           _maxId = m.id;
         }
@@ -271,7 +275,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       final m = await _chat.sendMedia(_conv.id, file);
       if (mounted) {
         setState(() {
-          _messages = [..._messages, m];
+          _messages = _mergeMessagesById(_messages, [m]);
           if (m.id > _maxId) {
             _maxId = m.id;
           }
@@ -434,6 +438,35 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             tooltip: 'Add to contacts',
             icon: const Icon(Icons.person_add_alt_1_outlined),
             onPressed: _addToContacts,
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'More',
+            icon: const Icon(Icons.more_vert),
+            onSelected: (v) {
+              if (v == 'call') {
+                _callCustomer();
+              } else if (v == 'contacts') {
+                _addToContacts();
+              }
+            },
+            itemBuilder: (ctx) => const [
+              PopupMenuItem(
+                value: 'call',
+                child: ListTile(
+                  leading: Icon(Icons.phone_outlined),
+                  title: Text('Call customer'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'contacts',
+                child: ListTile(
+                  leading: Icon(Icons.contact_page_outlined),
+                  title: Text('Add to contacts'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
         ],
       ),

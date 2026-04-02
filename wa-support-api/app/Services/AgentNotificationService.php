@@ -57,7 +57,8 @@ class AgentNotificationService
                     ->orWhere('role', UserRole::Admin);
             });
         } else {
-            $q->where('role', UserRole::Admin);
+            // Unassigned: notify every agent + admin (previously admin-only, so agents never got alerts).
+            $q->whereIn('role', [UserRole::Agent, UserRole::Admin]);
         }
 
         return $q->pluck('fcm_token')->filter()->unique()->values()->all();
