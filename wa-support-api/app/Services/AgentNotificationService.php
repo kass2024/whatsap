@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\UserRole;
 use App\Models\Conversation;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 
 class AgentNotificationService
 {
@@ -14,7 +15,42 @@ class AgentNotificationService
 
     public function notifyNewCustomerMessage(Conversation $conversation, string $preview): void
     {
+        $adminOnly = app(AdminOnlyPhoneService::class);
+        $restricted = $adminOnly->isRestricted($conversation->phone);
         $tokens = $this->tokensForConversation($conversation);
+
+        $eligibleUsers = User::query()
+            ->whereNotNull('fcm_token')
+            ->count();
+        $agentsWithToken = User::query()
+            ->whereNotNull('fcm_token')
+            ->whereIn('role', [UserRole::Agent, UserRole::Admin])
+            ->count();
+
+        Log::channel('webhook')->info('wa_support.fcm.notify_new_message', [
+            'conversation_id' => $conversation->id,
+            'phone' => $conversation->phone,
+            'restricted_line' => $restricted,
+            'assigned_to' => $conversation->assigned_to,
+            'token_targets' => count($tokens),
+            'users_with_any_fcm_token' => $eligibleUsers,
+            'agents_or_admins_with_fcm_token' => $agentsWithToken,
+            'preview_chars' => mb_strlen($preview),
+        ]);
+
+        if (count($tokens) === 0) {
+            Log::channel('webhook')->warning('wa_support.fcm.no_recipient_tokens', [
+                'conversation_id' => $conversation->id,
+                'phone' => $conversation->phone,
+                'restricted_line' => $restricted,
+                'assigned_to' => $conversation->assigned_to,
+                'hint' => $restricted
+                    ? 'Only admins receive pushes for restricted numbers; ensure an admin logged in on the app once.'
+                    : ($conversation->assigned_to
+                        ? 'Only the assignee + admins receive pushes for assigned threads.'
+                        : 'Agents and admins need a registered device: POST /device/fcm-token after login.'),
+            ]);
+        }
 
         $this->fcm->sendToMany(
             $tokens,

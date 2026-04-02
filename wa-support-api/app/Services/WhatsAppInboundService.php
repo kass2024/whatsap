@@ -194,6 +194,11 @@ class WhatsAppInboundService
 
         $waMessageId = $msg['id'] ?? null;
         if (is_string($waMessageId) && Message::query()->where('wa_message_id', $waMessageId)->exists()) {
+            Log::channel('webhook')->info('wa_support.inbound.duplicate_wa_message_id', [
+                'wa_message_id' => $waMessageId,
+                'from' => $from,
+            ]);
+
             return;
         }
 

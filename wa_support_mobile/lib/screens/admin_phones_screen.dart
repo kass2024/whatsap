@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../config/app_colors.dart';
@@ -147,74 +149,124 @@ class _AdminPhonesScreenState extends State<AdminPhonesScreen> {
   }
 
   Future<void> _pickFromContacts() async {
-    final granted = await FlutterContacts.requestPermission();
-    if (!granted) {
+    try {
+      var granted = false;
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        final status = await Permission.contacts.request();
+        granted = status.isGranted;
+      } else {
+        granted = await FlutterContacts.requestPermission(readonly: true);
+      }
+      if (!granted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Allow contacts access: Settings → Apps → Parrot Support → Permissions.'),
+            ),
+          );
+        }
+        return;
+      }
+
+      var list = await FlutterContacts.getContacts(withProperties: true);
+      list = list.where((c) => c.phones.isNotEmpty).toList()
+        ..sort((a, b) => a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()));
+
+      if (!mounted) {
+        return;
+      }
+      if (list.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No contacts with phone numbers found.')),
+        );
+        return;
+      }
+
+      final picked = await showModalBottomSheet<Contact>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        builder: (sheetCtx) {
+          final h = MediaQuery.of(sheetCtx).size.height * 0.78;
+          return SafeArea(
+            child: SizedBox(
+              height: h,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    child: Text(
+                      'Pick a contact',
+                      style: Theme.of(sheetCtx).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: list.length,
+                      itemBuilder: (_, i) {
+                        final c = list[i];
+                        final phone = c.phones.first.number;
+                        return ListTile(
+                          title: Text(c.displayName),
+                          subtitle: Text(phone),
+                          onTap: () => Navigator.pop(sheetCtx, c),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+      if (picked == null || !mounted) {
+        return;
+      }
+      final raw = picked.phones.first.number;
+      final p = _normalizePhone(raw);
+      if (p.length < 8) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not read a valid number from this contact.')),
+        );
+        return;
+      }
+      final label = picked.displayName.trim().isEmpty ? null : picked.displayName.trim();
+      setState(() {
+        _entries.add(_Entry(phone: p, label: label));
+      });
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Allow contacts access to pick a number.')),
+          SnackBar(content: Text('Contacts error: $e')),
         );
       }
-      return;
     }
-    var list = await FlutterContacts.getContacts(withProperties: true);
-    list = list.where((c) => c.phones.isNotEmpty).toList()
-      ..sort((a, b) => a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()));
+  }
 
-    if (!mounted) {
-      return;
-    }
-    final picked = await showModalBottomSheet<Contact>(
+  Future<void> _confirmDelete(int index) async {
+    final e = _entries[index];
+    final ok = await showDialog<bool>(
       context: context,
-      isScrollControlled: true,
-      builder: (ctx) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.75,
-        maxChildSize: 0.95,
-        minChildSize: 0.4,
-        builder: (_, scroll) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Text(
-                'Pick a contact',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                controller: scroll,
-                itemCount: list.length,
-                itemBuilder: (_, i) {
-                  final c = list[i];
-                  final phone = c.phones.first.number;
-                  return ListTile(
-                    title: Text(c.displayName),
-                    subtitle: Text(phone),
-                    onTap: () => Navigator.pop(ctx, c),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove from restricted list?'),
+        content: Text('${e.phone} will no longer be admin-only.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove'),
+          ),
+        ],
       ),
     );
-    if (picked == null || !mounted) {
-      return;
+    if (ok == true && mounted) {
+      setState(() => _entries.removeAt(index));
     }
-    final raw = picked.phones.first.number;
-    final p = _normalizePhone(raw);
-    if (p.length < 8) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not read a valid number from this contact.')),
-      );
-      return;
-    }
-    final label = picked.displayName.trim().isEmpty ? null : picked.displayName.trim();
-    setState(() {
-      _entries.add(_Entry(phone: p, label: label));
-    });
   }
 
   Future<void> _edit(int index) async {
@@ -317,14 +369,15 @@ class _AdminPhonesScreenState extends State<AdminPhonesScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               FilledButton.tonalIcon(
                 onPressed: _addManual,
                 icon: const Icon(Icons.edit_outlined, size: 18),
                 label: const Text('Add manually'),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(height: 10),
               FilledButton.icon(
                 onPressed: _pickFromContacts,
                 style: FilledButton.styleFrom(
@@ -359,9 +412,20 @@ class _AdminPhonesScreenState extends State<AdminPhonesScreen> {
                     style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w600),
                   ),
                   subtitle: Text(sub),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.edit_outlined),
-                    onPressed: () => _edit(i),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'Remove',
+                        icon: Icon(Icons.delete_outline, color: Colors.red.shade700),
+                        onPressed: () => _confirmDelete(i),
+                      ),
+                      IconButton(
+                        tooltip: 'Edit',
+                        icon: const Icon(Icons.edit_outlined),
+                        onPressed: () => _edit(i),
+                      ),
+                    ],
                   ),
                   onTap: () => _edit(i),
                 ),

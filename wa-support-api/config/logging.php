@@ -75,6 +75,16 @@ return [
             'replace_placeholders' => true,
         ],
 
+        /*
+        | FCM push diagnostics (tail: storage/logs/fcm.log)
+        */
+        'fcm' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/fcm.log'),
+            'level' => env('LOG_FCM_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
