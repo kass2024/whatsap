@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -15,10 +16,11 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _email = TextEditingController(text: 'agent@example.com');
-  final _password = TextEditingController(text: 'password');
+  final _email = TextEditingController();
+  final _password = TextEditingController();
   String? _error;
   bool _busy = false;
+  bool _obscure = true;
 
   @override
   void dispose() {
@@ -45,131 +47,263 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.sidebar,
-              AppColors.sidebarEnd,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 400),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.14),
-                            blurRadius: 28,
-                            offset: const Offset(0, 12),
+      backgroundColor: Colors.white,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final maxW = constraints.maxWidth;
+          final isWide = maxW > 520;
+          final padH = isWide ? (maxW - 440) / 2 : 24.0;
+
+          return Column(
+            children: [
+              _LoginHeader(
+                logoSize: isWide ? 112 : 96,
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(padH, 28, padH, 24 + bottomInset),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextField(
+                          controller: _email,
+                          keyboardType: TextInputType.emailAddress,
+                          autocorrect: false,
+                          autofillHints: const [AutofillHints.email],
+                          textInputAction: TextInputAction.next,
+                          style: const TextStyle(
+                            color: AppColors.brandBlack,
+                            fontWeight: FontWeight.w500,
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const ParrotBrandHero(logoSize: 68),
-                          const SizedBox(height: 28),
-                          TextField(
-                            controller: _email,
-                            keyboardType: TextInputType.emailAddress,
-                            autocorrect: false,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Email',
-                              prefixIcon: Icon(Icons.email_outlined),
+                          decoration: InputDecoration(
+                            hintText: 'Enter email',
+                            prefixIcon: Icon(
+                              Icons.alternate_email_rounded,
+                              color: AppColors.muted,
+                              size: 22,
                             ),
+                            filled: true,
+                            fillColor: const Color(0xFFF8FAF8),
                           ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _password,
+                          obscureText: _obscure,
+                          autofillHints: const [AutofillHints.password],
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) {
+                            if (!_busy) _submit();
+                          },
+                          style: const TextStyle(
+                            color: AppColors.brandBlack,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Enter password',
+                            prefixIcon: Icon(
+                              Icons.lock_outline_rounded,
+                              color: AppColors.muted,
+                              size: 22,
+                            ),
+                            suffixIcon: IconButton(
+                              tooltip: _obscure ? 'Show' : 'Hide',
+                              onPressed: () =>
+                                  setState(() => _obscure = !_obscure),
+                              icon: Icon(
+                                _obscure
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                                color: AppColors.muted,
+                                size: 22,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFFF8FAF8),
+                          ),
+                        ),
+                        if (_error != null) ...[
                           const SizedBox(height: 16),
-                          TextField(
-                            controller: _password,
-                            obscureText: true,
-                            textInputAction: TextInputAction.done,
-                            onSubmitted: (_) {
-                              if (!_busy) _submit();
-                            },
-                            decoration: const InputDecoration(
-                              labelText: 'Password',
-                              prefixIcon: Icon(Icons.lock_outline_rounded),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
                             ),
-                          ),
-                          if (_error != null) ...[
-                            const SizedBox(height: 14),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.red.shade50,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.red.shade100),
+                            decoration: BoxDecoration(
+                              color: AppColors.brandRed.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color:
+                                    AppColors.brandRed.withValues(alpha: 0.35),
                               ),
-                              child: Text(
-                                _error!,
-                                style: TextStyle(
-                                  color: Colors.red.shade800,
-                                  fontSize: 13,
-                                  height: 1.35,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.error_outline_rounded,
+                                  size: 20,
+                                  color: AppColors.brandRed,
                                 ),
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 26),
-                          FilledButton(
-                            onPressed: _busy ? null : _submit,
-                            style: FilledButton.styleFrom(
-                              minimumSize: const Size.fromHeight(50),
-                            ),
-                            child: _busy
-                                ? const SizedBox(
-                                    height: 22,
-                                    width: 22,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _error!,
+                                    style: const TextStyle(
+                                      color: Color(0xFFB71C1C),
+                                      fontSize: 13,
+                                      height: 1.35,
                                     ),
-                                  )
-                                : const Text('Sign in'),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
-                      ),
+                        const SizedBox(height: 28),
+                        FilledButton(
+                          onPressed: _busy ? null : _submit,
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(52),
+                            backgroundColor: AppColors.green,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: _busy
+                              ? const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  'Sign in',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                        ),
+                        if (kDebugMode) ...[
+                          const SizedBox(height: 20),
+                          Text(
+                            ApiConfig.displayHost,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppColors.muted.withValues(alpha: 0.85),
+                              fontSize: 11,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: 22),
-                    Text(
-                      'Same credentials as the web console (${AppBrand.productionApiHost}).',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.72),
-                        fontSize: 12,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'API: ${ApiConfig.displayHost}',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _LoginHeader extends StatelessWidget {
+  const _LoginHeader({required this.logoSize});
+
+  final double logoSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.loginHeaderStart,
+            AppColors.loginHeaderMid,
+            AppColors.loginHeaderEnd,
+          ],
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.22),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
                     ),
                   ],
                 ),
+                child: ClipOval(
+                  child: Image.asset(
+                    AppBrand.logoAsset,
+                    width: logoSize,
+                    height: logoSize,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => ParrotBrandMark(
+                      size: logoSize * 0.85,
+                    ),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: 4),
+              Container(
+                width: 36,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: AppColors.brandRed,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                AppBrand.appName,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                  color: Colors.white,
+                  height: 1.15,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                AppBrand.shortSubtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white.withValues(alpha: 0.88),
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
           ),
         ),
       ),

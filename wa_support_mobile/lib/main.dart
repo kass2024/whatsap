@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
+import 'branding/app_brand.dart';
 import 'config/app_colors.dart';
 import 'firebase_options.dart';
 import 'providers/app_state.dart';
@@ -45,15 +46,38 @@ class _Root extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
     if (app.loading) {
-      return const Scaffold(
-        backgroundColor: AppColors.pageBg,
+      return Scaffold(
+        backgroundColor: Colors.white,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const ParrotBrandMark(size: 72),
-              SizedBox(height: 28),
-              SizedBox(
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.green.withValues(alpha: 0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: Image.asset(
+                    AppBrand.logoAsset,
+                    width: 88,
+                    height: 88,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        const ParrotBrandMark(size: 80),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+              const SizedBox(
                 width: 28,
                 height: 28,
                 child: CircularProgressIndicator(
