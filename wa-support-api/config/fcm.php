@@ -1,30 +1,35 @@
 <?php
 
-/**
- * Resolve Firebase service account JSON path from FCM_SERVICE_ACCOUNT_PATH.
- *
- * Tries: absolute path, path relative to Laravel root, and storage/app/firebase/{basename}.
- */
 $rawPath = env('FCM_SERVICE_ACCOUNT_PATH');
-$envHint = is_string($rawPath) && $rawPath !== '' ? $rawPath : null;
+
 $resolved = null;
+$envHint = $rawPath;
 
-if (is_string($rawPath) && $rawPath !== '') {
-    $p = trim($rawPath);
-    $candidates = array_unique(array_filter([
-        $p,
-        base_path($p),
-        base_path(ltrim($p, '/')),
-        (strlen($p) < 200 && str_ends_with($p, '.json')) ? storage_path('app/firebase/'.basename($p)) : null,
-        (strlen($p) < 200 && str_ends_with($p, '.json')) ? base_path('storage/app/firebase/'.basename($p)) : null,
-    ]));
+// FORCE resolve path more reliably
+if ($rawPath) {
+    // If absolute path
+    if (file_exists($rawPath)) {
+        $resolved = $rawPath;
+    }
 
-    foreach ($candidates as $candidate) {
-        if (is_string($candidate) && $candidate !== '' && is_readable($candidate)) {
-            $resolved = $candidate;
-            break;
+    // If relative path
+    if (!$resolved && file_exists(base_path($rawPath))) {
+        $resolved = base_path($rawPath);
+    }
+
+    // Try storage fallback
+    if (!$resolved) {
+        $fallback = storage_path('app/firebase/' . basename($rawPath));
+        if (file_exists($fallback)) {
+            $resolved = $fallback;
         }
     }
+}
+
+// 🔥 IMPORTANT: fallback to env path even if unreadable
+// (so we can debug instead of getting null)
+if (!$resolved && $rawPath) {
+    $resolved = $rawPath;
 }
 
 return [
