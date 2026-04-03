@@ -24,14 +24,13 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
+class _HomeShellState extends State<HomeShell> {
   int _index = 0;
   late final VoidCallback _onNotificationConversation;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _onNotificationConversation = _handlePendingConversationFromNotification;
     notificationConversationIdToOpen.addListener(_onNotificationConversation);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -41,16 +40,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     notificationConversationIdToOpen.removeListener(_onNotificationConversation);
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && mounted) {
-      unawaited(context.read<AppState>().syncFcmTokenIfLoggedIn());
-    }
   }
 
   void _handlePendingConversationFromNotification() {

@@ -50,6 +50,15 @@ class ApiService {
     return http.post(_u(path), headers: h, body: jsonEncode(body)).timeout(_timeout);
   }
 
+  /// No Bearer token — for [POST /push/register-device] so pushes work before/without login.
+  Future<http.Response> postJsonPublic(String path, Map<String, dynamic> body) async {
+    final h = <String, String>{
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+    return http.post(_u(path), headers: h, body: jsonEncode(body)).timeout(_timeout);
+  }
+
   Future<http.Response> patchJson(String path, Map<String, dynamic> body) async {
     final h = await _headers();
     h['Content-Type'] = 'application/json';

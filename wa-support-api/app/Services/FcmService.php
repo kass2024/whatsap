@@ -21,6 +21,9 @@ class FcmService
                 'service_account_readable' => is_string($path) && is_readable($path),
                 'env_FCM_PROJECT_ID' => env('FCM_PROJECT_ID') !== null && env('FCM_PROJECT_ID') !== '',
                 'env_FCM_SERVICE_ACCOUNT_PATH' => env('FCM_SERVICE_ACCOUNT_PATH') !== null && (string) env('FCM_SERVICE_ACCOUNT_PATH') !== '',
+                'resolved_path' => $path,
+                'env_path_hint' => config('fcm.service_account_env_hint'),
+                'hint' => 'Place the JSON under wa-support-api/storage/app/firebase/ and set FCM_SERVICE_ACCOUNT_PATH=storage/app/firebase/yourfile.json — verify www-data can read it (chmod/chown).',
             ];
             Log::channel('fcm')->warning('FCM skipped: configuration', $ctx);
             Log::channel('webhook')->warning('wa_support.fcm.skipped_config', $ctx);

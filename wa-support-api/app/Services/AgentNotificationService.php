@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\UserRole;
 use App\Models\Conversation;
+use App\Models\DeviceFcmToken;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
@@ -18,6 +19,11 @@ class AgentNotificationService
         $adminOnly = app(AdminOnlyPhoneService::class);
         $restricted = $adminOnly->isRestricted($conversation->phone);
         $tokens = $this->tokensForConversation($conversation);
+        // Devices registered via POST /api/push/register-device (no login). Omit for admin-only lines.
+        if (! $restricted) {
+            $guest = DeviceFcmToken::query()->pluck('fcm_token')->filter()->all();
+            $tokens = array_values(array_unique(array_filter([...$tokens, ...$guest])));
+        }
 
         $eligibleUsers = User::query()
             ->whereNotNull('fcm_token')
@@ -43,7 +49,7 @@ class AgentNotificationService
                 ? 'Only admins receive pushes for restricted numbers; ensure an admin logged in on the app once.'
                 : ($conversation->assigned_to
                     ? 'Only the assignee + admins receive pushes for assigned threads.'
-                    : 'Agents and admins need a registered device: POST /api/device/fcm-token with Bearer token after login.');
+                    : 'No FCM tokens: open the mobile app once (registers without login via /api/push/register-device) or log in; ensure FCM_SERVICE_ACCOUNT_PATH is readable on the server.');
             Log::channel('webhook')->warning('wa_support.fcm.no_recipient_tokens', [
                 'conversation_id' => $conversation->id,
                 'phone' => $conversation->phone,

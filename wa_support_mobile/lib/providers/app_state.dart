@@ -25,19 +25,43 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> registerFcmToken(String token) async {
+  Future<void> registerPublicDeviceToken(String token) async {
     try {
-      final res = await api.postJson('/device/fcm-token', {'fcm_token': token});
+      final res = await api.postJsonPublic('/push/register-device', {'fcm_token': token});
       if (res.statusCode == 200) {
-        debugPrint('FCM token saved on server (${token.length} chars)');
+        debugPrint('FCM device registered (no login required) — ${token.length} chars');
       } else {
         debugPrint(
-          'FCM token registration failed: HTTP ${res.statusCode} ${res.body}',
+          'FCM public register failed: HTTP ${res.statusCode} ${res.body}',
         );
       }
     } catch (e, st) {
-      debugPrint('FCM token registration error: $e');
+      debugPrint('FCM public register error: $e');
       debugPrint('$st');
+    }
+  }
+
+  Future<void> registerAuthenticatedFcmToken(String token) async {
+    try {
+      final res = await api.postJson('/device/fcm-token', {'fcm_token': token});
+      if (res.statusCode == 200) {
+        debugPrint('FCM token saved for logged-in user (${token.length} chars)');
+      } else {
+        debugPrint(
+          'FCM user token failed: HTTP ${res.statusCode} ${res.body}',
+        );
+      }
+    } catch (e, st) {
+      debugPrint('FCM user token error: $e');
+      debugPrint('$st');
+    }
+  }
+
+  Future<void> syncFcmTokenToBackend(String token) async {
+    await registerPublicDeviceToken(token);
+    final t = await api.getToken();
+    if (t != null) {
+      await registerAuthenticatedFcmToken(token);
     }
   }
 
@@ -48,27 +72,21 @@ class AppState extends ChangeNotifier {
         debugPrint('FCM getToken returned null (check Firebase config / google-services.json).');
         return;
       }
-      await registerFcmToken(t);
+      await syncFcmTokenToBackend(t);
     } catch (e, st) {
       debugPrint('FCM getToken failed: $e');
       debugPrint('$st');
     }
   }
 
-  /// Call when app returns to foreground (permission may have been granted after login).
-  Future<void> syncFcmTokenIfLoggedIn() async {
-    if (user == null) {
-      return;
-    }
+  /// After notification permission or app resume — works logged in or out.
+  Future<void> syncFcmTokenOnResume() async {
     await _pushFcmToken();
   }
 
-  /// Permission + channel setup, then token — with a short retry (first getToken can race after init).
-  Future<void> registerPushForLoggedInUser() async {
-    if (user == null) {
-      return;
-    }
-    await setupPushNotifications(registerFcmToken);
+  /// Permission + listeners, then send token(s) to public + authenticated endpoints.
+  Future<void> registerPushForCurrentSession() async {
+    await setupPushNotifications(syncFcmTokenToBackend);
     await _pushFcmToken();
     await Future<void>.delayed(const Duration(seconds: 2));
     await _pushFcmToken();
@@ -79,13 +97,14 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     try {
       user = await auth.me();
-      if (user != null) {
-        await registerPushForLoggedInUser();
-      }
+      await registerPushForCurrentSession();
     } catch (e, st) {
       debugPrint('bootstrap: $e');
       debugPrint('$st');
       user = null;
+      try {
+        await registerPushForCurrentSession();
+      } catch (_) {}
     } finally {
       loading = false;
       notifyListeners();
@@ -94,7 +113,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> login(String email, String password) async {
     user = await auth.login(email, password);
-    await registerPushForLoggedInUser();
+    await registerPushForCurrentSession();
     notifyListeners();
   }
 
@@ -102,5 +121,6 @@ class AppState extends ChangeNotifier {
     await auth.logout();
     user = null;
     notifyListeners();
+    await registerPushForCurrentSession();
   }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\MessageController;
+use App\Http\Controllers\Api\PushDeviceController;
 use App\Http\Controllers\Api\TemplateMessageController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,6 +22,9 @@ Route::get('/login', function () {
 });
 
 Route::post('/login', [AuthController::class, 'login']);
+
+Route::post('/push/register-device', [PushDeviceController::class, 'register'])
+    ->middleware('throttle:120,1');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);

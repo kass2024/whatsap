@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -40,15 +42,40 @@ Future<void> main() async {
   runApp(
     ChangeNotifierProvider(
       create: (_) => AppState()..bootstrap(),
-      child: WaSupportApp(
-        home: const _Root(),
+      child: const WaSupportApp(
+        home: _Root(),
       ),
     ),
   );
 }
 
-class _Root extends StatelessWidget {
+class _Root extends StatefulWidget {
   const _Root();
+
+  @override
+  State<_Root> createState() => _RootState();
+}
+
+class _RootState extends State<_Root> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final app = context.read<AppState>();
+      unawaited(app.syncFcmTokenOnResume());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
