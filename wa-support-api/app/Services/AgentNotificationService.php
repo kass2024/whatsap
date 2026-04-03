@@ -39,16 +39,25 @@ class AgentNotificationService
         ]);
 
         if (count($tokens) === 0) {
+            $hint = $restricted
+                ? 'Only admins receive pushes for restricted numbers; ensure an admin logged in on the app once.'
+                : ($conversation->assigned_to
+                    ? 'Only the assignee + admins receive pushes for assigned threads.'
+                    : 'Agents and admins need a registered device: POST /api/device/fcm-token with Bearer token after login.');
             Log::channel('webhook')->warning('wa_support.fcm.no_recipient_tokens', [
                 'conversation_id' => $conversation->id,
                 'phone' => $conversation->phone,
                 'restricted_line' => $restricted,
                 'assigned_to' => $conversation->assigned_to,
-                'hint' => $restricted
-                    ? 'Only admins receive pushes for restricted numbers; ensure an admin logged in on the app once.'
-                    : ($conversation->assigned_to
-                        ? 'Only the assignee + admins receive pushes for assigned threads.'
-                        : 'Agents and admins need a registered device: POST /device/fcm-token after login.'),
+                'users_with_any_fcm_token' => $eligibleUsers,
+                'hint' => $hint,
+            ]);
+            Log::channel('fcm')->warning('No FCM recipients for conversation', [
+                'conversation_id' => $conversation->id,
+                'users_with_fcm_token_in_db' => $eligibleUsers,
+                'assigned_to' => $conversation->assigned_to,
+                'restricted_line' => $restricted,
+                'hint' => $hint,
             ]);
         }
 

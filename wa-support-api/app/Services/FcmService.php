@@ -116,6 +116,10 @@ class FcmService
             'data_keys' => array_keys($data),
         ]);
 
+        if (count($unique) === 0) {
+            Log::channel('fcm')->warning('FCM sendToMany skipped: zero recipients — no device tokens matched this notification. On the phone: log in once and check debug log for "FCM token saved on server". On the server: SELECT id, email, role, LENGTH(fcm_token) FROM users;');
+        }
+
         foreach ($unique as $token) {
             $this->sendToToken($token, $title, $body, $data);
         }

@@ -27,18 +27,51 @@ class AppState extends ChangeNotifier {
 
   Future<void> registerFcmToken(String token) async {
     try {
-      await api.postJson('/device/fcm-token', {'fcm_token': token});
-    } catch (_) {}
+      final res = await api.postJson('/device/fcm-token', {'fcm_token': token});
+      if (res.statusCode == 200) {
+        debugPrint('FCM token saved on server (${token.length} chars)');
+      } else {
+        debugPrint(
+          'FCM token registration failed: HTTP ${res.statusCode} ${res.body}',
+        );
+      }
+    } catch (e, st) {
+      debugPrint('FCM token registration error: $e');
+      debugPrint('$st');
+    }
   }
 
   Future<void> _pushFcmToken() async {
     try {
       final t = await FirebaseMessaging.instance.getToken();
       if (t == null) {
+        debugPrint('FCM getToken returned null (check Firebase config / google-services.json).');
         return;
       }
       await registerFcmToken(t);
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('FCM getToken failed: $e');
+      debugPrint('$st');
+    }
+  }
+
+  /// Call when app returns to foreground (permission may have been granted after login).
+  Future<void> syncFcmTokenIfLoggedIn() async {
+    if (user == null) {
+      return;
+    }
+    await _pushFcmToken();
+  }
+
+  /// Permission + channel setup, then token — with a short retry (first getToken can race after init).
+  Future<void> registerPushForLoggedInUser() async {
+    if (user == null) {
+      return;
+    }
+    await setupPushNotifications(registerFcmToken);
+    await _pushFcmToken();
+    await Future<void>.delayed(const Duration(seconds: 2));
+    await _pushFcmToken();
   }
 
   Future<void> bootstrap() async {
@@ -47,8 +80,7 @@ class AppState extends ChangeNotifier {
     try {
       user = await auth.me();
       if (user != null) {
-        await _pushFcmToken();
-        await setupPushNotifications(registerFcmToken);
+        await registerPushForLoggedInUser();
       }
     } catch (e, st) {
       debugPrint('bootstrap: $e');
@@ -62,8 +94,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> login(String email, String password) async {
     user = await auth.login(email, password);
-    await _pushFcmToken();
-    await setupPushNotifications(registerFcmToken);
+    await registerPushForLoggedInUser();
     notifyListeners();
   }
 

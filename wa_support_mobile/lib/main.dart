@@ -17,12 +17,20 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   var firebaseOk = false;
-  try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    firebaseOk = true;
-  } catch (e, st) {
-    debugPrint('Firebase init skipped ($e)');
-    debugPrint('$st');
+  if (!DefaultFirebaseOptions.isConfigured) {
+    debugPrint(
+      'Firebase not configured: in wa_support_mobile run: dart pub global activate '
+      'flutterfire_cli && flutterfire configure — or add Android app in Firebase Console '
+      'and place google-services.json under android/app/.',
+    );
+  } else {
+    try {
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      firebaseOk = true;
+    } catch (e, st) {
+      debugPrint('Firebase init failed ($e)');
+      debugPrint('$st');
+    }
   }
 
   if (firebaseOk) {

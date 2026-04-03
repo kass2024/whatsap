@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../firebase_options.dart';
+import 'notification_navigation.dart';
 
 const _androidChannelId = 'wa_support_alerts';
 const _androidChannelName = 'Support alerts';
@@ -14,6 +15,23 @@ const _androidChannelName = 'Support alerts';
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+}
+
+bool _firebaseOpenHandlersAttached = false;
+
+/// Cold start + notification tap → [emitOpenConversationFromNotification]. Call once after login.
+Future<void> attachFirebaseNotificationOpenHandlers() async {
+  if (Firebase.apps.isEmpty || _firebaseOpenHandlersAttached) {
+    return;
+  }
+  _firebaseOpenHandlersAttached = true;
+
+  final initial = await FirebaseMessaging.instance.getInitialMessage();
+  if (initial != null) {
+    emitOpenConversationFromNotification(initial);
+  }
+
+  FirebaseMessaging.onMessageOpenedApp.listen(emitOpenConversationFromNotification);
 }
 
 final FlutterLocalNotificationsPlugin _local = FlutterLocalNotificationsPlugin();
@@ -48,7 +66,19 @@ Future<void> setupPushNotifications(
       macOS: DarwinInitializationSettings(),
     );
 
-    await _local.initialize(init);
+    await _local.initialize(
+      init,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        final p = response.payload;
+        if (p == null || p.isEmpty) {
+          return;
+        }
+        final id = int.tryParse(p);
+        if (id != null) {
+          notificationConversationIdToOpen.value = id;
+        }
+      },
+    );
 
     final androidPlugin = _local.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
@@ -91,15 +121,12 @@ Future<void> setupPushNotifications(
               ),
               iOS: DarwinNotificationDetails(presentSound: true),
             ),
+            payload: m.data['conversation_id']?.toString(),
           );
         } catch (e, st) {
           debugPrint('FCM foreground show failed: $e');
           debugPrint('$st');
         }
-      });
-
-      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage m) {
-        debugPrint('Notification opened: ${m.messageId}');
       });
 
       FirebaseMessaging.instance.onTokenRefresh.listen((token) {
