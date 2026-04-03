@@ -12,30 +12,16 @@ class FcmService
     public function sendToToken(string $token, string $title, string $body, array $data = []): bool
     {
         $projectId = config('fcm.project_id');
-        $path = config('fcm.service_account_path');
+        $path = $this->resolveServiceAccountPath();
 
-        if (! $projectId || ! $path || ! is_readable($path)) {
-            $ctx = [
-                'project_id_set' => is_string($projectId) && $projectId !== '',
-                'service_account_path_set' => is_string($path) && $path !== '',
-                'service_account_readable' => is_string($path) && is_readable($path),
-                'env_FCM_PROJECT_ID' => env('FCM_PROJECT_ID') !== null && env('FCM_PROJECT_ID') !== '',
-                'env_FCM_SERVICE_ACCOUNT_PATH' => env('FCM_SERVICE_ACCOUNT_PATH') !== null && (string) env('FCM_SERVICE_ACCOUNT_PATH') !== '',
-                'resolved_path' => $path,
-                'env_path_hint' => config('fcm.service_account_env_hint'),
-                'hint' => 'Place the JSON under wa-support-api/storage/app/firebase/ and set FCM_SERVICE_ACCOUNT_PATH=storage/app/firebase/yourfile.json — verify www-data can read it (chmod/chown).',
-            ];
-            Log::channel('fcm')->warning('FCM skipped: configuration', $ctx);
-            Log::channel('webhook')->warning('wa_support.fcm.skipped_config', $ctx);
-
+        if (!$this->isValidConfig($projectId, $path)) {
             return false;
         }
 
         $accessToken = $this->accessToken($path);
-        if ($accessToken === null) {
-            Log::channel('fcm')->warning('FCM skipped: no OAuth access token (check service account JSON).');
-            Log::channel('webhook')->warning('wa_support.fcm.skipped_auth');
 
+        if (!$accessToken) {
+            Log::channel('fcm')->warning('FCM skipped: failed to get OAuth token');
             return false;
         }
 
@@ -68,10 +54,9 @@ class FcmService
 
         try {
             Log::channel('fcm')->info('FCM request', [
-                'project_id' => $projectId,
-                'token_prefix' => substr($token, 0, 14).'…',
+                'token_prefix' => substr($token, 0, 14) . '…',
                 'title' => $title,
-                'data_keys' => array_keys($data),
+                'project_id' => $projectId,
             ]);
 
             $response = Http::timeout(15)
@@ -79,71 +64,104 @@ class FcmService
                 ->acceptJson()
                 ->post($url, $payload);
 
-            if (! $response->successful()) {
-                $err = [
+            if (!$response->successful()) {
+                Log::channel('fcm')->error('FCM send failed', [
                     'status' => $response->status(),
                     'body' => $response->body(),
-                    'token_prefix' => substr($token, 0, 14).'…',
-                ];
-                Log::channel('fcm')->warning('FCM send failed', $err);
-                Log::channel('webhook')->warning('wa_support.fcm.send_failed', $err);
-
+                ]);
                 return false;
             }
 
-            $accepted = [
-                'token_prefix' => substr($token, 0, 14).'…',
+            Log::channel('fcm')->info('FCM message sent', [
                 'message_id' => $response->json('name'),
-            ];
-            Log::channel('fcm')->info('FCM message accepted', $accepted);
-            Log::channel('webhook')->info('wa_support.fcm.message_accepted', $accepted);
+            ]);
 
             return true;
-        } catch (\Throwable $e) {
-            Log::channel('fcm')->error('FCM exception', ['e' => $e->getMessage()]);
-            Log::channel('webhook')->error('wa_support.fcm.exception', ['e' => $e->getMessage()]);
 
+        } catch (\Throwable $e) {
+            Log::channel('fcm')->error('FCM exception', [
+                'error' => $e->getMessage(),
+            ]);
             return false;
         }
     }
 
-    /**
-     * @param  list<string>  $tokens
-     */
     public function sendToMany(array $tokens, string $title, string $body, array $data = []): void
     {
-        $unique = array_values(array_unique(array_filter($tokens)));
+        $tokens = array_values(array_unique(array_filter($tokens)));
+
         Log::channel('fcm')->info('FCM sendToMany', [
-            'recipient_count' => count($unique),
+            'recipient_count' => count($tokens),
             'title' => $title,
-            'data_keys' => array_keys($data),
         ]);
 
-        if (count($unique) === 0) {
-            Log::channel('fcm')->warning('FCM sendToMany skipped: zero recipients — no device tokens matched this notification. On the phone: log in once and check debug log for "FCM token saved on server". On the server: SELECT id, email, role, LENGTH(fcm_token) FROM users;');
+        if (empty($tokens)) {
+            Log::channel('fcm')->warning('FCM skipped: no recipients');
+            return;
         }
 
-        foreach ($unique as $token) {
+        foreach ($tokens as $token) {
             $this->sendToToken($token, $title, $body, $data);
         }
     }
 
-    protected function accessToken(string $serviceAccountPath): ?string
+    // =========================
+    // 🔧 HELPERS (PRODUCTION SAFE)
+    // =========================
+
+    protected function resolveServiceAccountPath(): ?string
+    {
+        $path = config('fcm.service_account_path');
+
+        // fallback (in case config cache breaks)
+        if (!$path) {
+            $envPath = $_ENV['FCM_SERVICE_ACCOUNT_PATH'] ?? null;
+            if ($envPath) {
+                $path = base_path($envPath);
+            }
+        }
+
+        return is_string($path) ? trim($path) : null;
+    }
+
+    protected function isValidConfig(?string $projectId, ?string $path): bool
+    {
+        $valid = $projectId &&
+                 $path &&
+                 file_exists($path) &&
+                 is_readable($path);
+
+        if (!$valid) {
+            Log::channel('fcm')->warning('FCM skipped: configuration error', [
+                'project_id' => $projectId,
+                'path' => $path,
+                'file_exists' => $path ? file_exists($path) : false,
+                'readable' => $path ? is_readable($path) : false,
+            ]);
+        }
+
+        return $valid;
+    }
+
+    protected function accessToken(string $path): ?string
     {
         try {
-            $json = json_decode((string) file_get_contents($serviceAccountPath), true, 512, JSON_THROW_ON_ERROR);
+            $json = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+
             $credentials = new ServiceAccountCredentials(
                 ['https://www.googleapis.com/auth/firebase.messaging'],
                 $json
             );
+
             $handler = HttpHandlerFactory::build();
             $token = $credentials->fetchAuthToken($handler);
 
             return $token['access_token'] ?? null;
-        } catch (\Throwable $e) {
-            Log::channel('fcm')->error('FCM auth failed', ['e' => $e->getMessage()]);
-            Log::channel('webhook')->error('wa_support.fcm.auth_failed', ['e' => $e->getMessage()]);
 
+        } catch (\Throwable $e) {
+            Log::channel('fcm')->error('FCM auth failed', [
+                'error' => $e->getMessage(),
+            ]);
             return null;
         }
     }
