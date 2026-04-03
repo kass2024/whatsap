@@ -1,39 +1,40 @@
 <?php
 
-$rawPath = env('FCM_SERVICE_ACCOUNT_PATH');
+/**
+ * Resolve Firebase service account JSON path safely using config values.
+ */
 
+// Get from env ONCE (safe for config files)
+$rawPath = $_ENV['FCM_SERVICE_ACCOUNT_PATH'] ?? $_SERVER['FCM_SERVICE_ACCOUNT_PATH'] ?? null;
+
+$envHint = is_string($rawPath) && $rawPath !== '' ? $rawPath : null;
 $resolved = null;
-$envHint = $rawPath;
 
-// FORCE resolve path more reliably
-if ($rawPath) {
-    // If absolute path
-    if (file_exists($rawPath)) {
-        $resolved = $rawPath;
-    }
+if ($envHint) {
+    $p = trim($envHint);
 
-    // If relative path
-    if (!$resolved && file_exists(base_path($rawPath))) {
-        $resolved = base_path($rawPath);
-    }
+    $candidates = array_unique(array_filter([
+        $p,
+        base_path($p),
+        base_path(ltrim($p, '/')),
+        (str_ends_with($p, '.json')) ? storage_path('app/firebase/' . basename($p)) : null,
+        (str_ends_with($p, '.json')) ? base_path('storage/app/firebase/' . basename($p)) : null,
+    ]));
 
-    // Try storage fallback
-    if (!$resolved) {
-        $fallback = storage_path('app/firebase/' . basename($rawPath));
-        if (file_exists($fallback)) {
-            $resolved = $fallback;
+    foreach ($candidates as $candidate) {
+        if (is_string($candidate) && $candidate !== '' && file_exists($candidate) && is_readable($candidate)) {
+            $resolved = $candidate;
+            break;
         }
     }
 }
 
-// 🔥 IMPORTANT: fallback to env path even if unreadable
-// (so we can debug instead of getting null)
-if (!$resolved && $rawPath) {
-    $resolved = $rawPath;
-}
-
 return [
-    'project_id' => env('FCM_PROJECT_ID'),
+    'project_id' => $_ENV['FCM_PROJECT_ID'] ?? $_SERVER['FCM_PROJECT_ID'] ?? null,
+
+    // FINAL resolved path (used by app)
     'service_account_path' => $resolved,
+
+    // Just for debugging
     'service_account_env_hint' => $envHint,
 ];
