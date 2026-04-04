@@ -4,11 +4,11 @@ namespace App\Events;
 
 use App\Models\Message;
 use Illuminate\Broadcasting\Channel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class MessageSent implements ShouldBroadcast
+class MessageSent implements ShouldBroadcastNow
 {
     use Dispatchable, SerializesModels;
 
@@ -19,7 +19,7 @@ class MessageSent implements ShouldBroadcast
      */
     public function __construct(Message $message)
     {
-        // Always use fresh model
+        // Always use fresh model to avoid stale data
         $this->message = $message->fresh();
     }
 
@@ -32,7 +32,7 @@ class MessageSent implements ShouldBroadcast
     }
 
     /**
-     * Event name
+     * Event name (Flutter listens to this)
      */
     public function broadcastAs(): string
     {
@@ -40,7 +40,7 @@ class MessageSent implements ShouldBroadcast
     }
 
     /**
-     * Data sent to Flutter (MATCH MODEL EXACTLY)
+     * Payload sent to frontend (MUST match Flutter model)
      */
     public function broadcastWith(): array
     {
@@ -54,7 +54,7 @@ class MessageSent implements ShouldBroadcast
             'mime_type' => $this->message->mime_type,
             'file_name' => $this->message->file_name,
             'status' => $this->message->status,
-            'created_at' => $this->message->created_at?->toIso8601String(),
+            'created_at' => optional($this->message->created_at)->toIso8601String(),
         ];
     }
 }
