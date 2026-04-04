@@ -11,6 +11,7 @@ use App\Services\WhatsAppSessionService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Storage;
+use App\Events\MessageSent; // ✅ ADDED
 
 class MessageController extends Controller
 {
@@ -84,10 +85,15 @@ class MessageController extends Controller
         try {
             $resp = $this->whatsapp->sendText($conversation->phone, $data['text']);
             $waId = $this->extractWaMessageId($resp);
+
             $message->update([
                 'wa_message_id' => $waId,
                 'status' => 'sent',
             ]);
+
+            // ✅ REAL-TIME BROADCAST (ONLY AFTER SUCCESS)
+            broadcast(new MessageSent($message->fresh()))->toOthers();
+
         } catch (RequestException $e) {
             $message->update(['status' => 'failed']);
 
@@ -145,11 +151,17 @@ class MessageController extends Controller
                 $path,
                 $data['caption'] ?? null
             );
+
             $waId = $this->extractWaMessageId($resp);
+
             $message->update([
                 'wa_message_id' => $waId,
                 'status' => 'sent',
             ]);
+
+            // ✅ REAL-TIME BROADCAST
+            broadcast(new MessageSent($message->fresh()))->toOthers();
+
         } catch (RequestException $e) {
             $message->update(['status' => 'failed']);
 
@@ -178,7 +190,6 @@ class MessageController extends Controller
     protected function extractWaMessageId(array $resp): ?string
     {
         $messages = $resp['messages'] ?? [];
-
         return $messages[0]['id'] ?? null;
     }
 
@@ -210,9 +221,6 @@ class MessageController extends Controller
         ];
     }
 
-    /**
-     * Mobile clients need an absolute https URL; Storage::url may return a path only.
-     */
     protected function absolutePublicMediaUrl(?string $disk, ?string $path): ?string
     {
         if (! is_string($disk) || $disk === '' || ! is_string($path) || $path === '') {
