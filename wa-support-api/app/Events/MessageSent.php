@@ -19,8 +19,8 @@ class MessageSent implements ShouldBroadcast
      */
     public function __construct(Message $message)
     {
-        // Always send fresh data (important for relations)
-        $this->message = $message->load(['conversation', 'sender']);
+        // Always use fresh model
+        $this->message = $message->fresh();
     }
 
     /**
@@ -32,7 +32,7 @@ class MessageSent implements ShouldBroadcast
     }
 
     /**
-     * Event name (frontend listens to this)
+     * Event name
      */
     public function broadcastAs(): string
     {
@@ -40,18 +40,21 @@ class MessageSent implements ShouldBroadcast
     }
 
     /**
-     * Data sent to frontend (VERY IMPORTANT)
+     * Data sent to Flutter (MATCH MODEL EXACTLY)
      */
     public function broadcastWith(): array
     {
         return [
             'id' => $this->message->id,
             'conversation_id' => $this->message->conversation_id,
-            'sender_id' => $this->message->sender_id,
-            'message' => $this->message->message,
-            'type' => $this->message->type,
-            'file_url' => $this->message->file_url,
-            'created_at' => $this->message->created_at->toDateTimeString(),
+            'sender_type' => $this->message->sender_type,
+            'message_type' => $this->message->message_type,
+            'content' => $this->message->content,
+            'media_url' => $this->message->media_url,
+            'mime_type' => $this->message->mime_type,
+            'file_name' => $this->message->file_name,
+            'status' => $this->message->status,
+            'created_at' => $this->message->created_at?->toIso8601String(),
         ];
     }
 }

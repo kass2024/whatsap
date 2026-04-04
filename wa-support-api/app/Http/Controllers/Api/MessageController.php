@@ -11,7 +11,7 @@ use App\Services\WhatsAppSessionService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Storage;
-use App\Events\MessageSent; // ✅ ADDED
+use App\Events\MessageSent;
 
 class MessageController extends Controller
 {
@@ -82,6 +82,9 @@ class MessageController extends Controller
             'status' => 'pending',
         ]);
 
+        \Log::info('Broadcasting message', $message->fresh()->toArray());
+        broadcast(new MessageSent($message->fresh()));
+
         try {
             $resp = $this->whatsapp->sendText($conversation->phone, $data['text']);
             $waId = $this->extractWaMessageId($resp);
@@ -91,11 +94,14 @@ class MessageController extends Controller
                 'status' => 'sent',
             ]);
 
-            // ✅ REAL-TIME BROADCAST (ONLY AFTER SUCCESS)
-            broadcast(new MessageSent($message->fresh()))->toOthers();
+            \Log::info('Message updated', $message->fresh()->toArray());
+            broadcast(new MessageSent($message->fresh()));
 
         } catch (RequestException $e) {
             $message->update(['status' => 'failed']);
+
+            \Log::info('Message updated', $message->fresh()->toArray());
+            broadcast(new MessageSent($message->fresh()));
 
             return response()->json([
                 'message' => 'WhatsApp send failed.',
@@ -144,6 +150,9 @@ class MessageController extends Controller
             'status' => 'pending',
         ]);
 
+        \Log::info('Broadcasting message', $message->fresh()->toArray());
+        broadcast(new MessageSent($message->fresh()));
+
         try {
             $resp = $this->whatsapp->sendMediaFromStorage(
                 $conversation->phone,
@@ -159,11 +168,14 @@ class MessageController extends Controller
                 'status' => 'sent',
             ]);
 
-            // ✅ REAL-TIME BROADCAST
-            broadcast(new MessageSent($message->fresh()))->toOthers();
+            \Log::info('Message updated', $message->fresh()->toArray());
+            broadcast(new MessageSent($message->fresh()));
 
         } catch (RequestException $e) {
             $message->update(['status' => 'failed']);
+
+            \Log::info('Message updated', $message->fresh()->toArray());
+            broadcast(new MessageSent($message->fresh()));
 
             return response()->json([
                 'message' => 'WhatsApp media send failed.',
