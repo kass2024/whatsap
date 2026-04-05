@@ -28,6 +28,10 @@
 
         @if($isAdmin)
             <div class="pcv-nav-section mt-4">{{ __('Administration') }}</div>
+            <a href="{{ route('users.index') }}" class="{{ request()->routeIs('users.*') ? 'active' : '' }}">
+                <i class="fas fa-users" aria-hidden="true"></i>
+                {{ __('User Management') }}
+            </a>
             <a href="{{ route('settings.admin-phones') }}" class="{{ request()->routeIs('settings.admin-phones') ? 'active' : '' }}">
                 <i class="fas fa-shield-halved" aria-hidden="true"></i>
                 {{ __('Admin-only numbers') }}

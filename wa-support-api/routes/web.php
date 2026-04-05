@@ -3,6 +3,7 @@
 use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Settings\AdminPhoneSettingsController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -29,6 +30,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('conversations.assign');
 
     Route::middleware('role:admin')->group(function () {
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
+        Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+        Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+
         Route::get('/settings/admin-phones', [AdminPhoneSettingsController::class, 'edit'])->name('settings.admin-phones');
         Route::put('/settings/admin-phones', [AdminPhoneSettingsController::class, 'update'])->name('settings.admin-phones.update');
     });
