@@ -44,16 +44,19 @@ class OpenAIService
                         1. Payment-related terms in ANY language:
                            - English: "payment", "pay", "paid", "invoice", "bill", "cost", "fee", "charge", "transaction", "money", "price", "amount", "credit card", "bank", "account", "deposit", "refund", "receipt"
                            - Kiswahili: "malipo", "kulipa", "gharamia", "kodi", "deni", "ada", "hisa", "mikopo", "pesa", "cheki", "akaunti", "faini", "sare", "mshahara"
+                           - Kinyarwanda: "amafaranga", "kubaha", "kubaha amafaranga", "inshingano", "igiciro", "umusanzu", "amahoro", "ibyishimo", "amafaranga", "konti", "banki", "kubika", "kugarura", "urusoho", "amafaranga"
                            - French: "paiement", "payer", "facture", "coût", "prix", "montant", "carte bancaire", "banque", "compte", "dépôt", "remboursement", "reçu", "argent"
                         
                         2. Admission-related terms in ANY language:
                            - English: "admission", "admit", "accepted", "enrolled", "registered", "application", "apply", "join", "entrance", "registration", "enrollment"
                            - Kiswahili: "kujiunga", "kuingia", "kusajili", "kuingizwa", "kuingia", "kubali", "kuingia", "kuandikwa", "kuingia"
+                           - Kinyarwanda: "kwinjira", "kwiyandikisha", "kugira uruhushya", "kwinjira muri", "kwandikisha", "kugirira", "kwinjira", "kwiyandikisha", "kubona", "kugira uruhushya"
                            - French: "admission", "admis", "inscrit", "candidature", "inscription", "intégrer", "joindre", "entrer", "enrôlement"
                         
                         3. Urgent terms in ANY language:
                            - English: "urgent", "emergency", "critical", "asap", "immediately", "help", "problem", "issue", "trouble", "broken", "fail", "error", "serious", "severe", "warning", "danger", "sick", "medical", "hospital", "accident", "injury"
                            - Kiswahili: "haraka", "dharura", "tatizo", "hatari", "dhiki", "tatizo", "njaa", "ugonjwa", "dharura", "majeruhi", "hospitalini", "ajali", "vidonge"
+                           - Kinyarwanda: "ihuriro", "ibyago", "ikibazo", "bahana", "ubworozi", "ibibazo", "ihungabana", "umwuka", "indwara", "ibitaro", "akazi", "umuvuduko", "akabwiriza", "ihungabana", "guhinda", "ubworozi", "ibyago"
                            - French: "urgent", "urgence", "critique", "immédiatement", "aide", "problème", "problème", "panne", "erreur", "sérieux", "grave", "danger", "médical", "hôpital", "accident", "blessure"
 
                         RULES:
