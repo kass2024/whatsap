@@ -9,6 +9,7 @@ use App\Models\Message;
 use App\Models\User;
 use App\Services\AdminOnlyPhoneService;
 use App\Services\AgentNotificationService;
+use App\Services\LiveChatService;
 use App\Services\OpenAIService;
 use App\Services\WhatsAppCloudService;
 use App\Services\WhatsAppSessionService;
@@ -28,7 +29,8 @@ class MonitoringController extends Controller
         protected WhatsAppCloudService $whatsapp,
         protected AgentNotificationService $notifier,
         protected AdminOnlyPhoneService $adminOnlyPhones,
-        protected OpenAIService $openAI
+        protected OpenAIService $openAI,
+        protected LiveChatService $liveChat
     ) {}
 
     public function dashboard(): View
@@ -76,10 +78,14 @@ class MonitoringController extends Controller
                 $conversation->is_emergency = $analysis['is_emergency'];
                 $conversation->emergency_priority = $analysis['priority'];
                 $conversation->emergency_reason = $analysis['reason'];
+                $conversation->detected_keywords = $analysis['detected_keywords'];
+                $conversation->language_detected = $analysis['language_detected'];
             } else {
                 $conversation->is_emergency = false;
                 $conversation->emergency_priority = 'normal';
                 $conversation->emergency_reason = '';
+                $conversation->detected_keywords = [];
+                $conversation->language_detected = 'unknown';
             }
         });
 
@@ -102,6 +108,26 @@ class MonitoringController extends Controller
         $conversations->setCollection($sortedConversations);
 
         return view('monitoring.conversations.index-whatsapp', compact('conversations', 'restrictedSet'));
+    }
+
+    public function search(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $searchTerm = $request->get('search', '');
+        
+        if (empty($searchTerm)) {
+            return response()->json(['conversations' => []]);
+        }
+
+        $conversations = $this->liveChat->searchConversations($searchTerm, auth()->id());
+        
+        // Broadcast update to all connected clients
+        $conversationIds = array_column($conversations, 'id');
+        $this->liveChat->broadcastChatUpdate($conversationIds);
+
+        return response()->json([
+            'conversations' => $conversations,
+            'total' => count($conversations)
+        ]);
     }
 
     public function show(Request $request, Conversation $conversation): View|RedirectResponse

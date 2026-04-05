@@ -21,6 +21,7 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [MonitoringController::class, 'dashboard'])->name('dashboard');
     Route::get('/conversations', [MonitoringController::class, 'index'])->name('conversations.index');
+    Route::post('/conversations/search', [MonitoringController::class, 'search'])->name('conversations.search');
     Route::get('/conversations/{conversation}', [MonitoringController::class, 'show'])->name('conversations.show');
     Route::post('/conversations/{conversation}/send-text', [MonitoringController::class, 'sendText'])->name('conversations.send-text');
     Route::post('/conversations/{conversation}/send-media', [MonitoringController::class, 'sendMedia'])->name('conversations.send-media');
