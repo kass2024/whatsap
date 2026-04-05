@@ -68,24 +68,41 @@ class MonitoringController extends Controller
 
     public function index(): View
     {
-        $q = $this->visibleConversationsQuery()->with('assignedAgent:id,name,email');
-        $conversations = $q->orderByDesc('last_message_at')->orderByDesc('updated_at')->paginate(25);
+        // Debug: Try multiple approaches to get conversations
+        \Log::info('=== CONVERSATION LOADING DEBUG START ===');
+        
+        // Method 1: Direct Conversation query
+        $directConversations = \App\Models\Conversation::all();
+        \Log::info('Direct query count: ' . $directConversations->count());
+        
+        // Method 2: With relationships
+        $withRelations = \App\Models\Conversation::with('assignedAgent')->get();
+        \Log::info('With relations count: ' . $withRelations->count());
+        
+        // Method 3: Paginated query (what we need)
+        $paginatedConversations = \App\Models\Conversation::with('assignedAgent:id,name,email')
+            ->orderByDesc('last_message_at')
+            ->orderByDesc('updated_at')
+            ->paginate(25);
+        \Log::info('Paginated count: ' . $paginatedConversations->count());
+        \Log::info('Paginated total: ' . $paginatedConversations->total());
+        
+        // Use the paginated version
+        $conversations = $paginatedConversations;
 
-        // Analyze messages for emergency detection
+        // Add emergency properties to each conversation
         $conversations->getCollection()->each(function ($conversation) {
+            $conversation->is_emergency = false;
+            $conversation->emergency_priority = 'normal';
+            $conversation->emergency_reason = '';
+            $conversation->detected_keywords = [];
+            $conversation->language_detected = 'unknown';
+            
+            // Simple keyword detection for now (remove API calls for debugging)
             if ($conversation->last_message_preview) {
-                $analysis = $this->openAI->analyzeMessage($conversation->last_message_preview);
-                $conversation->is_emergency = $analysis['is_emergency'];
-                $conversation->emergency_priority = $analysis['priority'];
-                $conversation->emergency_reason = $analysis['reason'];
-                $conversation->detected_keywords = $analysis['detected_keywords'];
-                $conversation->language_detected = $analysis['language_detected'];
-            } else {
-                $conversation->is_emergency = false;
-                $conversation->emergency_priority = 'normal';
-                $conversation->emergency_reason = '';
-                $conversation->detected_keywords = [];
-                $conversation->language_detected = 'unknown';
+                $conversation->is_emergency = $this->simpleKeywordDetection($conversation->last_message_preview);
+                $conversation->emergency_priority = $conversation->is_emergency ? 'high' : 'normal';
+                $conversation->emergency_reason = $conversation->is_emergency ? 'Keyword match' : '';
             }
         });
 
@@ -107,7 +124,50 @@ class MonitoringController extends Controller
         // Rebuild paginator with sorted items
         $conversations->setCollection($sortedConversations);
 
-        return view('monitoring.conversations.index-whatsapp', compact('conversations', 'restrictedSet'));
+        \Log::info('Final conversations count: ' . $conversations->count());
+        \Log::info('=== CONVERSATION LOADING DEBUG END ===');
+
+        return view('monitoring.conversations.index-final', compact('conversations', 'restrictedSet'));
+    }
+
+    /**
+     * Simple keyword detection for older messages to avoid API calls
+     */
+    private function simpleKeywordDetection(string $message): bool
+    {
+        if (empty($message)) {
+            return false;
+        }
+
+        $message = strtolower($message);
+        
+        // Emergency keywords in multiple languages
+        $keywords = [
+            // English
+            'payment', 'pay', 'urgent', 'emergency', 'admission', 'critical', 'asap', 'immediately', 
+            'help', 'problem', 'issue', 'trouble', 'broken', 'fail', 'error', 'serious', 'severe',
+            'invoice', 'bill', 'cost', 'fee', 'charge', 'transaction', 'money', 'price', 'amount',
+            
+            // Kiswahili
+            'malipo', 'kulipa', 'gharamia', 'dharura', 'haraka', 'tatizo', 'hatari', 'dhiki',
+            'kodi', 'deni', 'ada', 'pesa', 'cheki', 'akaunti', 'faini',
+            
+            // Kinyarwanda
+            'amafaranga', 'kubaha', 'inshingano', 'igiciro', 'umusanzu', 'ihuriro', 'ibyago',
+            'ikibazo', 'bahana', 'ubworozi', 'ihungabana', 'umwuka', 'indwara', 'ibitaro',
+            
+            // French
+            'paiement', 'payer', 'facture', 'coût', 'prix', 'montant', 'argent', 'urgent',
+            'urgence', 'critique', 'aide', 'problème', 'panne', 'erreur', 'sérieux', 'grave',
+        ];
+
+        foreach ($keywords as $keyword) {
+            if (strpos($message, $keyword) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function search(Request $request): \Illuminate\Http\JsonResponse
@@ -148,6 +208,22 @@ class MonitoringController extends Controller
 
         $session = $this->sessions->status($conversation);
         $agents = User::query()->where('role', UserRole::Agent)->orderBy('name')->get(['id', 'name', 'email']);
+
+        // Analyze for emergency detection
+        if ($conversation->last_message_preview) {
+            $analysis = $this->openAI->analyzeMessage($conversation->last_message_preview);
+            $conversation->is_emergency = $analysis['is_emergency'];
+            $conversation->emergency_priority = $analysis['priority'];
+            $conversation->emergency_reason = $analysis['reason'];
+            $conversation->detected_keywords = $analysis['detected_keywords'];
+            $conversation->language_detected = $analysis['language_detected'];
+        } else {
+            $conversation->is_emergency = false;
+            $conversation->emergency_priority = 'normal';
+            $conversation->emergency_reason = '';
+            $conversation->detected_keywords = [];
+            $conversation->language_detected = 'unknown';
+        }
 
         return view('monitoring.conversations.show-whatsapp', [
             'conversation' => $conversation,
