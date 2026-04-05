@@ -9,6 +9,7 @@ use App\Models\Message;
 use App\Models\User;
 use App\Services\AdminOnlyPhoneService;
 use App\Services\AgentNotificationService;
+use App\Services\OpenAIService;
 use App\Services\WhatsAppCloudService;
 use App\Services\WhatsAppSessionService;
 use Illuminate\Database\Eloquent\Builder;
@@ -26,7 +27,8 @@ class MonitoringController extends Controller
         protected WhatsAppSessionService $sessions,
         protected WhatsAppCloudService $whatsapp,
         protected AgentNotificationService $notifier,
-        protected AdminOnlyPhoneService $adminOnlyPhones
+        protected AdminOnlyPhoneService $adminOnlyPhones,
+        protected OpenAIService $openAI
     ) {}
 
     public function dashboard(): View
@@ -67,6 +69,20 @@ class MonitoringController extends Controller
         $q = $this->visibleConversationsQuery()->with('assignedAgent:id,name,email');
         $conversations = $q->orderByDesc('last_message_at')->orderByDesc('updated_at')->paginate(25);
 
+        // Analyze messages for emergency detection
+        $conversations->getCollection()->each(function ($conversation) {
+            if ($conversation->last_message_preview) {
+                $analysis = $this->openAI->analyzeMessage($conversation->last_message_preview);
+                $conversation->is_emergency = $analysis['is_emergency'];
+                $conversation->emergency_priority = $analysis['priority'];
+                $conversation->emergency_reason = $analysis['reason'];
+            } else {
+                $conversation->is_emergency = false;
+                $conversation->emergency_priority = 'normal';
+                $conversation->emergency_reason = '';
+            }
+        });
+
         $restrictedSet = [];
         if (auth()->user()->isAdmin()) {
             foreach ($this->adminOnlyPhones->restrictedPhoneList() as $p) {
@@ -74,7 +90,18 @@ class MonitoringController extends Controller
             }
         }
 
-        return view('monitoring.conversations.index', compact('conversations', 'restrictedSet'));
+        // Sort conversations: emergency first, then by last message time
+        $sortedConversations = $conversations->getCollection()->sortByDesc(function ($conversation) {
+            return [
+                $conversation->is_emergency ? 1 : 0,
+                $conversation->last_message_at?->timestamp ?? 0
+            ];
+        })->values();
+
+        // Rebuild paginator with sorted items
+        $conversations->setCollection($sortedConversations);
+
+        return view('monitoring.conversations.index-whatsapp', compact('conversations', 'restrictedSet'));
     }
 
     public function show(Request $request, Conversation $conversation): View|RedirectResponse
@@ -96,7 +123,7 @@ class MonitoringController extends Controller
         $session = $this->sessions->status($conversation);
         $agents = User::query()->where('role', UserRole::Agent)->orderBy('name')->get(['id', 'name', 'email']);
 
-        return view('monitoring.conversations.show', [
+        return view('monitoring.conversations.show-whatsapp', [
             'conversation' => $conversation,
             'messages' => $messages,
             'session' => $session,
